@@ -47,9 +47,17 @@ ADR 0002. Concretely, Prompt 1 must produce:
 
 ## Open questions
 
-1. **Neon credentials.** Nothing has been connected. A Neon project, a database, and a
-   Neon Auth project are needed before Prompt 1 can run a migration. `.env.example`
-   documents every variable required.
+1. ~~**Neon credentials.**~~ **Resolved 2026-08-20.** `DATABASE_URL` and
+   `DATABASE_URL_UNPOOLED` are set in `.env.local` (gitignored) and both verified
+   connecting: `neondb` on PostgreSQL 18.6, `us-east-2`, user `neondb_owner`. The
+   database is **empty** — only the `public` schema, zero tables.
+
+   **Still outstanding: Neon Auth is not enabled on this project.** There is no
+   `neon_auth` schema, so `neon_auth.users_sync` does not exist yet. Enable it in the
+   Neon dashboard (project → Auth) and add `NEXT_PUBLIC_STACK_PROJECT_ID`,
+   `NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY` and `STACK_SECRET_SERVER_KEY` to
+   `.env.local`. Prompt 1 can define the schema without it, but cannot reference the
+   users_sync table until it exists — and Prompt 3 is blocked on it entirely.
 2. **Git remote.** The user asked to push over SSH but has not supplied the repository
    URL. A local git repo exists with one commit; no remote is configured.
 3. **The prize question** — from the prompt pack's pre-work, still unanswered and not
