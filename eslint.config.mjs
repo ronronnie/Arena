@@ -1,15 +1,10 @@
-import { dirname } from 'path';
-import { fileURLToPath } from 'url';
-import { FlatCompat } from '@eslint/eslintrc';
+import coreWebVitals from 'eslint-config-next/core-web-vitals';
+import typescript from 'eslint-config-next/typescript';
 import prettier from 'eslint-config-prettier';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const compat = new FlatCompat({ baseDirectory: __dirname });
-
 const config = [
-  ...compat.extends('next/core-web-vitals', 'next/typescript'),
+  ...coreWebVitals,
+  ...typescript,
   prettier,
   {
     ignores: [
@@ -45,7 +40,7 @@ const config = [
         {
           patterns: [
             {
-              group: ['@/lib/db/client', '**/db/client', 'drizzle-orm/*', '@neondatabase/*'],
+              group: ['@/lib/db/client', '**/db/client', 'drizzle-orm/*', '@neondatabase/serverless'],
               message:
                 'Do not touch the database directly. Add a query to /lib/db/queries and import it from @/lib/db.',
             },

@@ -6,18 +6,22 @@ The repo is scaffolded and verified end to end, but there are **no features and 
 database schema**. `npm run build`, `npm run check` (typecheck + lint + unit tests) and
 `npm run test:e2e` all pass on a clean checkout.
 
-What exists: Next.js 15 (App Router, Turbopack) with TypeScript in hard-strict mode,
-Tailwind v4 with a placeholder shadcn/ui token layer, ESLint + Prettier, Vitest (5 tests,
-passing) and Playwright (2 smoke tests, passing on a mobile viewport). A Neon + Drizzle
-data-access layer with an actor-based authorization model. Neon Auth (Stack) wiring with
-its default handler routes. `lib/config/hypotheses.ts` holds the eight tunable guesses,
-and `/` renders them as a placeholder page purely to prove the framework-free `/lib`
-layer is wired to the app layer.
+What exists: Next.js 16 (App Router, Turbopack) with TypeScript in hard-strict mode,
+Tailwind v4 with a placeholder shadcn/ui token layer, ESLint flat config + Prettier,
+Vitest (5 tests, passing) and Playwright (2 smoke tests, passing on a mobile viewport).
+A Neon + Drizzle data-access layer with an actor-based authorization model.
+`lib/config/hypotheses.ts` holds the eight tunable guesses, and `/` renders them purely
+to prove the framework-free `/lib` layer is wired to the app layer.
 
-What does not exist: any domain model (`lib/db/schema.ts` is an empty placeholder), any
-query, any migration, a working seed (`scripts/seed.ts` throws on purpose), the design
-language, and every feature. No environment credentials have been supplied, so nothing
-has ever connected to a real Neon database or a real Stack project.
+**Neon is connected and auth works end to end.** `neondb` on PostgreSQL 18.6 (us-east-2),
+both pooled and unpooled connections verified. Neon Auth is enabled and was exercised for
+real: sign-up through our own `/api/auth` proxy returned a session, `get-session` returned
+it back, and rows appeared in `neon_auth.user`, `.session` and `.account`. The test user
+was then deleted — `neon_auth.user` is back to 0 rows.
+
+What does not exist: any Arena domain model (`lib/db/schema.ts` is an empty placeholder),
+any query, any migration, a working seed (`scripts/seed.ts` throws on purpose), any
+sign-in UI, the design language, and every feature.
 
 **The stack diverges from the prompt pack.** Supabase was replaced with Neon + Drizzle +
 Neon Auth + Vercel Blob during this session, at the user's direction. This has real
@@ -30,13 +34,17 @@ Run **Prompt 1 — Domain model, licensing gate, and a seed that actually works*
 `/docs/arena-prompt-pack-FINAL.md`.
 
 Before writing schema, translate it off Supabase using the mapping table at the bottom of
-ADR 0002. Concretely, Prompt 1 must produce:
+ADR 0002. Everything needed to run it is in place — the database is reachable and empty
+except for the `neon_auth` schema. Concretely, Prompt 1 must produce:
 
 - `lib/db/schema.ts` — the real Drizzle schema. Two structural requirements: Set Piece
   and Signature state must be incapable of sharing a column (Core rule 1), and nothing
   joining an entry to an identity may be reachable before a vote is recorded (Core rule 3).
-- A `neon_auth.users_sync` reference declaration, with the Arena profile hanging off it
-  rather than duplicating identity.
+- A read-only Drizzle declaration of `neon_auth.user` (note: the table is `user`, not
+  `users_sync` — see the correction in ADR 0002), with the Arena profile hanging off it
+  by foreign key rather than duplicating identity. Mind the camelCase column names
+  (`emailVerified`, `createdAt`) — they are Better Auth's, not ours, so the schema's
+  `casing: 'snake_case'` setting does not apply to them.
 - Generated migrations in `/drizzle` via `npm run db:generate`.
 - Query functions in `/lib/db/queries`, actor-first, each with a test proving the wrong
   actor is refused. Where the prompt says "RLS policy", write the authorization plus its
@@ -52,12 +60,11 @@ ADR 0002. Concretely, Prompt 1 must produce:
    connecting: `neondb` on PostgreSQL 18.6, `us-east-2`, user `neondb_owner`. The
    database is **empty** — only the `public` schema, zero tables.
 
-   **Still outstanding: Neon Auth is not enabled on this project.** There is no
-   `neon_auth` schema, so `neon_auth.users_sync` does not exist yet. Enable it in the
-   Neon dashboard (project → Auth) and add `NEXT_PUBLIC_STACK_PROJECT_ID`,
-   `NEXT_PUBLIC_STACK_PUBLISHABLE_CLIENT_KEY` and `STACK_SECRET_SERVER_KEY` to
-   `.env.local`. Prompt 1 can define the schema without it, but cannot reference the
-   users_sync table until it exists — and Prompt 3 is blocked on it entirely.
+   **Neon Auth is enabled and verified.** `NEON_AUTH_BASE_URL` is set and
+   `NEON_AUTH_COOKIE_SECRET` was generated locally (32 bytes, base64url). A full
+   sign-up → session → database round trip succeeded and the test user was cleaned up.
+   Nothing auth-related is outstanding for Prompt 1.
+
 2. **Git remote.** The user asked to push over SSH but has not supplied the repository
    URL. A local git repo exists with one commit; no remote is configured.
 3. **The prize question** — from the prompt pack's pre-work, still unanswered and not
@@ -66,8 +73,14 @@ ADR 0002. Concretely, Prompt 1 must produce:
    Blocks Phase 4; does not block Prompts 1–15.
 4. **`isMinor` is hardcoded `true`** in `lib/auth/actor.ts`. Deliberate — the safe default
    until Prompt 3's onboarding collects a date of birth. Prompt 3 must replace it.
-5. **Storage of minors' dates of birth.** Neon Auth or the Arena profile table? Affects
-   the Prompt 3 schema and probably deserves its own ADR.
+
+5. **`@neondatabase/auth` is `0.5.0-beta`.** A beta dependency on the auth path is a real
+   risk. Accepted because it is the official SDK and the server speaks standard Better
+   Auth — the fallback is the stable `better-auth` client (1.7.1) against the same base
+   URL, which the round-trip test showed would work. Revisit at Prompt 21.
+6. **Storage of minors' dates of birth.** Neon Auth's `user` table is Better Auth's and
+   we do not control its columns, so date of birth belongs on the Arena profile table.
+   Confirm in Prompt 1 and probably write an ADR.
 
 ## Completed
 
@@ -82,9 +95,11 @@ _Constitution and session continuity_
   protocol.
 - `PROGRESS.md` — this file.
 - `docs/decisions/0001-stack-choice.md` — the first ADR.
-- `docs/decisions/0002-neon-drizzle-stack-auth.md` — the Supabase → Neon decision and,
+- `docs/decisions/0002-neon-drizzle-neon-auth.md` — the Supabase → Neon decision and,
   more importantly, what replaces row-level security. Includes a translation table for
-  every later prompt that says "Supabase".
+  every later prompt that says "Supabase", plus a correction recording the Stack Auth
+  mistake described below.
+- `docs/decisions/0003-next-16.md` — the Next 15 → 16 upgrade and what it broke.
 - `docs/arena-prompt-pack-FINAL.md` — the 22-prompt pack, moved into the repo so it is
   versioned alongside the work.
 
@@ -107,9 +122,12 @@ _Data access_
 
 _Auth_
 
-- `lib/auth/stack.ts` — lazily constructed Stack server app.
+- `lib/auth/index.ts` — lazily constructed `createNeonAuth` instance.
+- `lib/auth/env.ts` — `NEON_AUTH_BASE_URL` / `NEON_AUTH_COOKIE_SECRET`, with the 32-char
+  check done here so the error names the variable.
+- `lib/auth/client.ts` — the browser client, talking only to our own proxy.
 - `lib/auth/actor.ts` — the only place a session becomes an `Actor`.
-- `app/handler/[...stack]/page.tsx` — Stack's default auth routes.
+- `app/api/auth/[...path]/route.ts` — the proxy to the hosted Neon Auth instance.
 
 _App and tooling_
 
@@ -117,7 +135,8 @@ _App and tooling_
 - `lib/ui/cn.ts`, `components.json` — shadcn/ui wiring (`new-york`, neutral, CSS vars).
 - `tsconfig.json` — strict plus `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`,
   `verbatimModuleSyntax`, `noImplicitOverride`, `noFallthroughCasesInSwitch`.
-- `eslint.config.mjs` — Next + TypeScript + Prettier, plus the two boundary guards.
+- `eslint.config.mjs` — flat config (Next 16 native) + TypeScript + Prettier, plus the
+  two boundary guards.
 - `.prettierrc.json`, `.prettierignore`, `vitest.config.mts`, `tests/setup.ts`,
   `playwright.config.ts`, `tests/e2e/smoke.spec.ts`.
 - `.env.example` — every variable the codebase will use, grouped and commented.
@@ -127,8 +146,18 @@ _App and tooling_
 
 **Decisions made**
 
-1. **Supabase → Neon + Drizzle + Neon Auth (Stack) + Vercel Blob.** User's call, made
+1. **Supabase → Neon + Drizzle + Neon Auth + Vercel Blob.** User's call, made
    mid-session. Full reasoning in ADR 0002.
+
+   **Corrected later in the same session:** the auth layer was first built against
+   `@stackframe/stack`, because older Neon Auth was Stack-based. It is not any more.
+   Enabling Auth on the project and inspecting the schema showed Better Auth's tables
+   (`user`, `session`, `account`, `verification`, `jwks`, `organization`, `member`,
+   `invitation`) — no `users_sync` anywhere. Stack was removed and `@neondatabase/auth`
+   installed. The lesson, recorded in ADR 0002: the vendor kept the product name while
+   replacing what sits underneath it, and one query against the live schema would have
+   caught it before any code was written.
+
 2. **A guarded data-access layer replaces RLS.** This is the consequential one. Postgres
    no longer enforces isolation, so we do: one Drizzle instance behind an ESLint import
    ban, every query taking an explicit `Actor` first, `system()` requiring a stated
@@ -149,7 +178,13 @@ _App and tooling_
    direction is acceptable.
 7. **Light theme default, no `prefers-color-scheme` auto-switch.** Dark is opt-in via a
    `.dark` class. From the design direction: older users overwhelmingly prefer light.
-8. **Playwright runs the mobile viewport project first, on port 3100.** Mobile is the
+8. **Next 15 → 16**, against the prompt pack's pin. Forced by `@neondatabase/auth`'s
+   `next >= 16` peer dependency, and it also cleared the three high-severity advisories
+   whose only fix was Next 16. Taken now because the app was three files of placeholder
+   UI; the same upgrade at Prompt 15 would be a project. ADR 0003. Knock-on: ESLint moved
+   to native flat config and `@eslint/eslintrc` was removed.
+
+9. **Playwright runs the mobile viewport project first, on port 3100.** Mobile is the
    primary target, not an afterthought. The dedicated port exists because
    `reuseExistingServer` silently attached to an unrelated project's dev server on 3000
    and the failure looked like a broken assertion.
@@ -167,12 +202,15 @@ _App and tooling_
 - **Not installed, deliberately:** Mux, Inngest, Upstash, PostHog, Sentry. Each arrives
   with the prompt that uses it, so we don't carry unused dependencies through five phases.
   All are documented in `.env.example` and `CLAUDE.md` already.
-- **No middleware.** The Supabase session-refresh middleware was removed with Supabase.
-  Stack handles its own cookies. Auth-gated routing is Prompt 3.
+- **No middleware and no sign-in UI.** `@neondatabase/auth` provides `auth.middleware()`
+  for route protection, deliberately not mounted — with no protected routes yet it would
+  be guessing at Prompt 3's design. Auth-gated routing and audience-first onboarding are
+  Prompt 3.
 - **No CI.** No GitHub Actions workflow. `npm run check` is the local gate.
-- **3 high-severity npm advisories**, all transitive through Next 15 (`postcss`, `sharp`).
-  The only fix `npm audit fix --force` offers is Next 16, which contradicts the pinned
-  stack. Accepted for now; revisit at Prompt 21 (hardening).
+- ~~3 high-severity npm advisories~~ **cleared by the Next 16 upgrade.** Four _moderate_
+  advisories remain, all inside `drizzle-kit` via `@esbuild-kit/esm-loader` — a dev-only
+  dependency that never ships. Revisit at Prompt 21 (hardening).
+- **`@neondatabase/auth` is a beta release** on the auth path. See open question 5.
 - **No PWA manifest or service worker** despite "web-first PWA". Not needed until there
   is something to install.
 

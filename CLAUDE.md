@@ -107,11 +107,25 @@ spam, no manipulative streaks, no "your rank is dropping!" panic.
 | Analytics     | PostHog + Sentry                 | Prompt 20                                                           |
 | Tests         | Vitest (unit) + Playwright (E2E) |                                                                     |
 
-> **This diverges from the prompt pack**, which specifies Supabase. Neon + Drizzle +
-> Stack Auth + Vercel Blob was chosen during Prompt 0. The consequences — especially for
-> Core rule 7 — are recorded in `/docs/decisions/0002-neon-drizzle-stack-auth.md`. Read
-> it before writing any query. Where a later prompt says "Supabase" or "RLS policy",
-> read it as "Neon" and "data-access-layer authorization".
+> **This diverges from the prompt pack**, which specifies Supabase and Next 15. Neon +
+> Drizzle + Neon Auth + Vercel Blob was chosen during Prompt 0, and Next was moved to 16
+> because the Neon Auth SDK requires it. The consequences — especially for Core rule 7 —
+> are in `/docs/decisions/0002-neon-drizzle-neon-auth.md`, and the framework bump is in
+> `/docs/decisions/0003-next-16.md`. Read 0002 before writing any query. Where a later
+> prompt says "Supabase" or "RLS policy", read it as "Neon" and "data-access-layer
+> authorization".
+
+### Auth, concretely
+
+Neon Auth is a **hosted Better Auth instance**, not Stack Auth. Identity tables live in
+the `neon_auth` schema of the same Neon database: `user`, `session`, `account`,
+`verification`, `jwks`, `organization`, `member`, `invitation`. There is no `users_sync`
+table — that belonged to the older Stack-based Neon Auth. The Arena profile hangs off
+`neon_auth.user`; we never duplicate identity.
+
+The browser never talks to Neon Auth directly. `app/api/auth/[...path]/route.ts` proxies
+to the hosted instance and exchanges its response for a first-party HttpOnly session
+cookie signed with our own `NEON_AUTH_COOKIE_SECRET`.
 
 ---
 
@@ -129,7 +143,7 @@ spam, no manipulative streaks, no "your rank is dropping!" panic.
     client.ts           Raw Drizzle client. Importable only from within /lib/db.
     actor.ts            Who is asking. Framework-free authorization primitives.
     schema.ts           Drizzle schema.
-  /auth                 Neon Auth (Stack) wiring. The one place sessions become Actors.
+  /auth                 Neon Auth wiring. The one place a session becomes an Actor.
   /ui                   Small UI helpers (cn).
 /inngest                Background and scheduled functions.
 /drizzle                Generated migrations. Do not hand-edit.
@@ -231,3 +245,13 @@ value **and** write an ADR recording what was learned.
 | **Eligibility check** | The set of conditions an entry must satisfy to be rated: correct brief, within the window, meets the brief's constraints, passes integrity checks.                      |
 | **Actor**             | Who a query runs on behalf of: a user, an anonymous visitor, or the system. Every data-access function takes one.                                                       |
 | **Hypothesis**        | A tunable number in `lib/config/hypotheses.ts` that is a guess, not a finding.                                                                                          |
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
