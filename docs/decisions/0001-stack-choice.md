@@ -1,8 +1,13 @@
 # 0001 — Stack choice
 
-- **Status:** Accepted
+- **Status:** Accepted, partly superseded
 - **Date:** 2026-08-20
 - **Context:** Prompt 0
+- **Superseded by:** [0002](./0002-neon-drizzle-neon-auth.md) on auth — the table below
+  describes Neon Auth as Stack Auth syncing into `neon_auth.users_sync`. That was wrong.
+  Neon Auth is a hosted Better Auth instance and the identity table is `neon_auth.user`.
+  Left unedited as the historical record; read 0002 for what is true.
+  Also amended by [0003](./0003-next-16.md) on the Next.js version.
 
 ## Context
 

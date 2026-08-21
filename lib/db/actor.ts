@@ -9,7 +9,7 @@
  * rules, and they should be unit-testable without a request in scope.
  */
 
-/** A signed-in human. `id` is the Neon Auth (Stack) user id. */
+/** A signed-in human. `id` is the Neon Auth user id (`neon_auth.user.id`). */
 export type UserActor = {
   kind: 'user';
   id: string;

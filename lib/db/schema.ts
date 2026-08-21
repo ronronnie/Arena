@@ -12,9 +12,12 @@
  *     voter before their vote is recorded. Model the reveal as a state change, not as
  *     a rendering decision.
  *
- * Neon Auth (Stack) syncs users into the `neon_auth.users_sync` table automatically.
- * Prompt 1 declares that table here as a read-only reference and hangs the Arena
- * profile off it rather than duplicating identity.
+ * Neon Auth is a hosted Better Auth instance writing into the `neon_auth` schema of this
+ * same database. The identity table is `user` — there is no `users_sync` table; that
+ * belonged to the older Stack-based Neon Auth. Prompt 1 declares `neon_auth.user` here as
+ * a read-only reference and hangs the Arena profile off it rather than duplicating
+ * identity. Its columns are Better Auth's own camelCase (`emailVerified`, `createdAt`),
+ * so this schema's `casing: 'snake_case'` setting does not apply to them.
  */
 
 export {};

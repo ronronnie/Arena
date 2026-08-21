@@ -92,20 +92,20 @@ spam, no manipulative streaks, no "your rank is dropping!" panic.
 
 ## Stack
 
-| Layer         | Choice                           | Notes                                                               |
-| ------------- | -------------------------------- | ------------------------------------------------------------------- |
-| Framework     | Next.js 15, App Router           | TypeScript strict, React 19                                         |
-| Styling       | Tailwind v4 + shadcn/ui          | Tokens in `app/globals.css`; design language is Prompt 2            |
-| Database      | **Neon** Postgres                | Serverless driver, pooled for app / unpooled for DDL                |
-| ORM           | **Drizzle**                      | `snake_case` casing, schema in `lib/db/schema.ts`                   |
-| Auth          | **Neon Auth (Stack)**            | Users sync into `neon_auth.users_sync` in our own Postgres          |
-| Storage       | **Vercel Blob**                  | Avatars, thumbnails, result cards. Not performance video            |
-| Video         | Mux                              | Signed playback — entries are private until a drop opens (Prompt 8) |
-| Jobs          | Inngest                          | Drops, ratings, seasons, integrity sweeps                           |
-| Rate limiting | Upstash Redis                    | Vote integrity (Prompt 14)                                          |
-| Hosting       | Vercel                           |                                                                     |
-| Analytics     | PostHog + Sentry                 | Prompt 20                                                           |
-| Tests         | Vitest (unit) + Playwright (E2E) |                                                                     |
+| Layer         | Choice                             | Notes                                                                             |
+| ------------- | ---------------------------------- | --------------------------------------------------------------------------------- |
+| Framework     | Next.js 16, App Router             | TypeScript strict, React 19. See ADR 0003 — the pack pins 15                      |
+| Styling       | Tailwind v4 + shadcn/ui            | Tokens in `app/globals.css`; design language is Prompt 2                          |
+| Database      | **Neon** Postgres                  | Serverless driver, pooled for app / unpooled for DDL                              |
+| ORM           | **Drizzle**                        | `snake_case` casing, schema in `lib/db/schema.ts`                                 |
+| Auth          | **Neon Auth** (hosted Better Auth) | Identity lives in the `neon_auth` schema of our own Postgres; the table is `user` |
+| Storage       | **Vercel Blob**                    | Avatars, thumbnails, result cards. Not performance video                          |
+| Video         | Mux                                | Signed playback — entries are private until a drop opens (Prompt 8)               |
+| Jobs          | Inngest                            | Drops, ratings, seasons, integrity sweeps                                         |
+| Rate limiting | Upstash Redis                      | Vote integrity (Prompt 14)                                                        |
+| Hosting       | Vercel                             |                                                                                   |
+| Analytics     | PostHog + Sentry                   | Prompt 20                                                                         |
+| Tests         | Vitest (unit) + Playwright (E2E)   |                                                                                   |
 
 > **This diverges from the prompt pack**, which specifies Supabase and Next 15. Neon +
 > Drizzle + Neon Auth + Vercel Blob was chosen during Prompt 0, and Next was moved to 16

@@ -25,7 +25,7 @@ sign-in UI, the design language, and every feature.
 
 **The stack diverges from the prompt pack.** Supabase was replaced with Neon + Drizzle +
 Neon Auth + Vercel Blob during this session, at the user's direction. This has real
-consequences for Core rule 7 — read `/docs/decisions/0002-neon-drizzle-stack-auth.md`
+consequences for Core rule 7 — read `/docs/decisions/0002-neon-drizzle-neon-auth.md`
 before writing a single query.
 
 ## Next step
@@ -171,7 +171,7 @@ _App and tooling_
    cause some friction (they already forced a fix in `playwright.config.ts`), taken
    deliberately: Core rules 6 and 7 are easier to hold when the compiler refuses to let
    `undefined` through.
-5. **Lazy auth construction.** The Stack app is built on first use, not at module scope,
+5. **Lazy auth construction.** The Neon Auth instance is built on first use, not at module scope,
    so a missing credential fails at request time rather than breaking every CI and preview
    build. Same principle as `lib/db/env.ts`.
 6. **`isMinor` defaults to `true`.** A wrong guess has asymmetric cost and only one
@@ -192,8 +192,10 @@ _App and tooling_
 **Deferred / known gaps**
 
 - **No database schema, no queries, no migrations, no working seed.** All Prompt 1.
-- **No credentials anywhere.** Nothing has connected to a real Neon database or Stack
-  project. `.env.example` is documentation, not a working config.
+- ~~**No credentials anywhere.**~~ **Resolved later in the same session.** Neon and Neon
+  Auth are both connected and verified — see **Current state** and open question 1.
+  `.env.local` (gitignored) holds the working config; `.env.example` remains the
+  documentation of every variable.
 - **`lib/db/schema.ts` is empty**, so `lib/db/client.ts` is typed against nothing. It will
   start earning its keep in Prompt 1.
 - **No shadcn/ui components installed yet.** `components.json` and `cn` are wired; the
