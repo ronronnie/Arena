@@ -2,56 +2,56 @@
 
 ## Current state
 
-The repo is scaffolded and verified end to end, but there are **no features and no
-database schema**. `npm run build`, `npm run check` (typecheck + lint + unit tests) and
-`npm run test:e2e` all pass on a clean checkout.
+**The domain model exists and is live.** 20 tables and 1 view in `public` on the Neon
+database, two triggers, a data-access layer over them, and a seed that produces a drop you
+can actually judge. There is still **no feature UI** — that starts at Prompt 2.
 
-What exists: Next.js 16 (App Router, Turbopack) with TypeScript in hard-strict mode,
-Tailwind v4 with a placeholder shadcn/ui token layer, ESLint flat config + Prettier,
-Vitest (5 tests, passing) and Playwright (2 smoke tests, passing on a mobile viewport).
-A Neon + Drizzle data-access layer with an actor-based authorization model.
-`lib/config/hypotheses.ts` holds the eight tunable guesses, and `/` renders them purely
-to prove the framework-free `/lib` layer is wired to the app layer.
+`npm run build`, `npm run check` and `npm run test:e2e` all pass. 52 unit and integration
+tests, 2 Playwright smoke tests. The build succeeds with **no environment variables set**,
+which was re-verified this session and had in fact regressed (see the fixes below).
 
-**Neon is connected and auth works end to end.** `neondb` on PostgreSQL 18.6 (us-east-2),
-both pooled and unpooled connections verified. Neon Auth is enabled and was exercised for
-real: sign-up through our own `/api/auth` proxy returned a session, `get-session` returned
-it back, and rows appeared in `neon_auth.user`, `.session` and `.account`. The test user
-was then deleted — `neon_auth.user` is back to 0 rows.
+What exists now, on top of the Prompt 0 scaffold:
 
-What does not exist: any Arena domain model (`lib/db/schema.ts` is an empty placeholder),
-any query, any migration, a working seed (`scripts/seed.ts` throws on purpose), any
-sign-in UI, the design language, and every feature.
+- `lib/db/schema.ts` — the full domain model. Two lanes in two separate tables, a
+  composite foreign key making cross-brief comparisons impossible, and CHECK constraints
+  on every invariant that can be expressed as one.
+- `drizzle/0000_real_king_bedlam.sql` + `drizzle/0001_triggers_and_blind_view.sql` —
+  applied. The second is hand-written: the licence trigger, the no-self-vote trigger, and
+  the `set_piece_entry_blind` view.
+- `lib/db/queries/*` — 27 actor-first functions across profiles, briefs, entries,
+  comparisons, ratings and follows, re-exported through `lib/db/index.ts`.
+- `scripts/seed.ts` — 2 categories, 1 open season, 3 published briefs on licensed tracks,
+  60 competitors, 120 eligible entries, 800 comparisons, 12 signature entries, 200 follows.
+  Deterministic, and re-runnable.
+- `public/fixtures/clip-01..08.mp4` — eight generated ~2KB clips, plus the ffmpeg script
+  that makes them.
+- `/` now reads the seeded drop through the DAL, proving the whole path end to end.
+
+Still absent: the design language, every screen, auth-gated routing, Mux, Inngest,
+Upstash, and any rating maths (`ratings` rows are seeded, not computed).
 
 **The stack diverges from the prompt pack.** Supabase was replaced with Neon + Drizzle +
-Neon Auth + Vercel Blob during this session, at the user's direction. This has real
-consequences for Core rule 7 — read `/docs/decisions/0002-neon-drizzle-neon-auth.md`
-before writing a single query.
+Neon Auth + Vercel Blob. This has real consequences for Core rule 7 — read
+`/docs/decisions/0002-neon-drizzle-neon-auth.md` before writing a single query. Prompt 1
+added a second divergence, on lane modelling: `/docs/decisions/0004-two-lanes-two-tables.md`.
 
 ## Next step
 
-Run **Prompt 1 — Domain model, licensing gate, and a seed that actually works** from
+Run **Prompt 2 — Design language (before any feature UI)** from
 `/docs/arena-prompt-pack-FINAL.md`.
 
-Before writing schema, translate it off Supabase using the mapping table at the bottom of
-ADR 0002. Everything needed to run it is in place — the database is reachable and empty
-except for the `neon_auth` schema. Concretely, Prompt 1 must produce:
+It replaces the neutral token layer in `app/globals.css` wholesale, so it should happen
+before any screen is built rather than after. Two things from this repo to carry into it:
 
-- `lib/db/schema.ts` — the real Drizzle schema. Two structural requirements: Set Piece
-  and Signature state must be incapable of sharing a column (Core rule 1), and nothing
-  joining an entry to an identity may be reachable before a vote is recorded (Core rule 3).
-- A read-only Drizzle declaration of `neon_auth.user` (note: the table is `user`, not
-  `users_sync` — see the correction in ADR 0002), with the Arena profile hanging off it
-  by foreign key rather than duplicating identity. Mind the camelCase column names
-  (`emailVerified`, `createdAt`) — they are Better Auth's, not ours, so the schema's
-  `casing: 'snake_case'` setting does not apply to them.
-- Generated migrations in `/drizzle` via `npm run db:generate`.
-- Query functions in `/lib/db/queries`, actor-first, each with a test proving the wrong
-  actor is refused. Where the prompt says "RLS policy", write the authorization plus its
-  refusal test.
-- A real `scripts/seed.ts` with fixture videos. This matters more than it sounds: Prompts
-  5–7 build the voting surface against this seed, before the upload pipeline exists. A
-  seed that produces empty pairs makes the most important screen in the app un-buildable.
+- **Light is the default and dark is opt-in via a `.dark` class** — decided in Prompt 0,
+  do not add a `prefers-color-scheme` auto-switch.
+- **Each category gets its own accent ramp** (see the glossary entry for Category). Two
+  categories exist in the seed — `bharatanatyam` and `metal-vocals` — so the ramp
+  mechanism has something real to be tested against.
+
+The placeholder markup on `/` is scaffolding, not design. Prompt 2 may replace all of it;
+what must keep working is that it reads the drop through `@/lib/db` with an `anonymous()`
+actor.
 
 ## Open questions
 
@@ -81,11 +81,174 @@ except for the `neon_auth` schema. Concretely, Prompt 1 must produce:
    risk. Accepted because it is the official SDK and the server speaks standard Better
    Auth — the fallback is the stable `better-auth` client (1.7.1) against the same base
    URL, which the round-trip test showed would work. Revisit at Prompt 21.
-6. **Storage of minors' dates of birth.** Neon Auth's `user` table is Better Auth's and
-   we do not control its columns, so date of birth belongs on the Arena profile table.
-   Confirm in Prompt 1 and probably write an ADR.
+6. ~~**Storage of minors' dates of birth.**~~ **Resolved 2026-08-22.** `dob` is a column on
+   `profiles`, not on `neon_auth.user` — we do not control Better Auth's columns. The
+   related decision is that `is_minor` is **not** stored at all: it is derived from `dob`
+   by `lib/domain/age.ts`, which treats an unknown date of birth as a minor. Reasoning in
+   ADR 0004. Prompt 3 must collect `dob` at onboarding and Prompt 19 must decide how long
+   we keep it.
+
+7. **Ratings are seeded, not computed.** `ratings` and `rating_history` hold plausible
+   numbers drawn from a normal distribution so leaderboards and divisions have shape. They
+   do **not** derive from the 800 seeded comparisons. Prompt 10 makes them real; until it
+   does, no number shown from those tables means anything, which matters because Core rule
+   6 says every number must be explainable.
+
+8. **`npm run test` now needs ~35 seconds** when `DATABASE_URL` is set, because the
+   integration suite makes a few hundred round trips to Neon. It skips itself entirely
+   without credentials. If this becomes annoying, the fix is a separate vitest project and
+   a `test:integration` script rather than deleting the coverage.
 
 ## Completed
+
+### Prompt 1 — Domain model, licensing gate, and a seed that works — 2026-08-22
+
+**Files created/changed**
+
+_Schema and migrations_
+
+- `lib/db/schema.ts` — the domain model. 20 tables: profiles, categories, seasons, tracks,
+  set_pieces, set_piece_entries, signature_entries, eligibility_checks, comparisons,
+  ratings, rating_history, divisions, division_members, judge_scores, judge_calibration,
+  season_results, follows, reports, moderation_actions, appeals. Plus a declaration of the
+  `set_piece_entry_blind` view.
+- `lib/db/auth-schema.ts` — **new file.** `neon_auth.user`, read-only. Split out of
+  `schema.ts` because drizzle-kit generates migrations from whatever it finds exported
+  there, and emitted `CREATE TABLE "neon_auth"."user"` — a statement that would have
+  collided with the live table on the first migration.
+- `drizzle/0000_real_king_bedlam.sql` — generated. Applied.
+- `drizzle/0001_triggers_and_blind_view.sql` — hand-written custom migration. Applied.
+- `lib/db/types.ts` — inferred row, insert and enum types, plus `BlindEntry` / `BlindPair`.
+- `drizzle.config.ts` — loads `.env.local` explicitly, and `schemaFilter: ['public']`.
+
+_Data access_
+
+- `lib/db/queries/profiles.ts`, `setPieces.ts`, `entries.ts`, `comparisons.ts`,
+  `ratings.ts`, `follows.ts` — 27 exported functions, actor first.
+- `lib/db/index.ts` — the public door, now populated.
+- `lib/db/client.ts` — the Drizzle instance is now built lazily behind a Proxy.
+- `lib/domain/age.ts` — **new.** `isMinor` / `ageInYears`, framework-free.
+
+_Seed and fixtures_
+
+- `scripts/seed.ts` — the real seed, replacing the placeholder that threw.
+- `scripts/make-fixtures.sh` + `public/fixtures/clip-01..08.mp4` — eight generated clips,
+  ~2.3 KB each, 19 KB total.
+- `scripts/migrate.ts` — **new.** `npm run db:migrate` now runs this.
+
+_Tests_
+
+- `tests/unit/dal-authorization.test.ts` — 20 refusal tests.
+- `tests/unit/age.test.ts` — 12 tests.
+- `tests/integration/constraints.test.ts` — 15 tests against a real Postgres.
+- `vitest.config.mts` — includes `tests/integration/**`.
+
+_App and docs_
+
+- `app/page.tsx` — reads the seeded drop through the DAL.
+- `app/api/auth/[...path]/route.ts` — handler resolved per request, not at module scope.
+- `docs/decisions/0004-two-lanes-two-tables.md` — **new ADR.**
+- `CLAUDE.md` — 7 new glossary terms; two command-comment corrections.
+
+**Decisions made**
+
+1. **Two entry tables instead of one `entries` table with a `lane` enum.** The pack
+   specifies one table plus a CHECK. Core rule 1 asks for structural separation, and with
+   one table the only thing keeping signature work out of the rating system is that every
+   aggregate query in Prompts 9–13 remembers `WHERE lane = 'set_piece'`. Now a signature
+   entry reaching a comparison is a foreign-key error. Full trade-offs — including the
+   column duplication this costs — in ADR 0004.
+
+2. **Core rule 3 is a database view.** `set_piece_entry_blind` has no `user_id` column at
+   all, and the voting path reads it. Not filtered, not hidden: absent. The reveal is a
+   separate call that refuses until a vote exists, and refuses the system actor too — the
+   reveal belongs to the voter who earned it.
+
+3. **"Same brief" is a foreign key, not a trigger.** A composite unique on
+   `set_piece_entries (id, set_piece_id)` plus composite FKs from `comparisons` means
+   Postgres rejects a cross-brief pair outright. Only the licence window and the
+   no-self-vote rule need triggers, because only those need a lookup.
+
+4. **`is_minor` is derived, never stored.** The pack lists it as a column. A stored flag is
+   wrong the morning after a birthday, and an unknown date of birth must read as "minor".
+   `lib/domain/age.ts` owns it.
+
+5. **A `video_source` enum instead of nullable Mux columns.** Entries reference either a
+   Mux playback ID or a committed fixture path, with a CHECK making the combination
+   explicit. This is what lets Prompts 5–7 build the voting surface before Prompt 8 exists,
+   without leaving a nullable column whose meaning has to be inferred.
+
+6. **The seed does not go through the data-access layer.** It opens its own pooled `pg`
+   connection and runs in one transaction. The DAL's HTTP driver does one round trip per
+   statement and cannot roll back a partial seed. It is the only file outside `/lib/db`
+   that talks to Postgres directly, and the reasoning is written at the top of it.
+
+7. **The seed writes fake rows into `neon_auth.user`.** There is no other way to have 60
+   competitors, since profiles are keyed to identities. Every seeded identity uses the
+   reserved `@seed.arena.invalid` domain and is cleaned up by email match, so a real
+   account created through sign-up is never touched.
+
+8. **`npm run db:migrate` no longer uses drizzle-kit.** `drizzle-kit migrate` connects to
+   Neon, prints "Using 'pg' driver for database querying", and then hangs indefinitely
+   without applying anything or timing out. `scripts/migrate.ts` drives Drizzle's own
+   migrator instead — same journal, same folder, same ordering.
+
+9. **Seeded competitors are all adults.** Fake minors' data is still a habit, and the
+   default should be the one we want to keep.
+
+**Two things that were broken and are now fixed**
+
+- **`npm run build` did not work without credentials**, despite Prompt 0 claiming it did.
+  Two separate causes: `lib/db/client.ts` constructed the Drizzle client at module scope,
+  and `app/api/auth/[...path]/route.ts` destructured `auth().handler()` at module scope,
+  which defeated the lazy auth instance behind it. Both are now lazy. Re-verified by moving
+  `.env.local` aside and building.
+- **A dead ADR link in `lib/db/queries/README.md`** pointing at `0002-neon-drizzle-stack-auth.md`.
+
+**Deferred / known gaps**
+
+- **No rating maths.** Glicko-2 is Prompt 10. Seeded ratings are drawn from a distribution
+  and do not derive from the seeded comparisons.
+- **Pairing is uniform-random.** `nextBlindPair` picks any two eligible entries. Rating-aware
+  pairing is Prompt 10; doing it now would mean tuning it against fabricated ratings.
+- **`recordVote` is two statements, not one transaction.** Neon's HTTP driver has no
+  interactive transactions. A crash between them costs a user one comparison of unlock
+  progress. Prompt 14 moves this onto the pooled WebSocket driver.
+- **No queries yet for** eligibility checks, judge scores, judge calibration, season
+  results, reports, moderation actions, or appeals. The tables and their constraints exist;
+  the prompts that own those surfaces (9, 13, 11, 15) write the queries.
+- **`profiles.handle` has no format validation.** A unique index only. Prompt 3 owns
+  handle rules at onboarding.
+- **No `updated_at` triggers.** Callers set it. Fine while every write goes through the DAL.
+- **The `requirements` jsonb is unvalidated.** Prompt 9's eligibility engine gives it a
+  schema; until then it is a bag.
+
+**How to verify it works**
+
+```bash
+npm run db:migrate    # applies 0000 and 0001
+npm run db:seed       # prints the row counts it created
+npm run check         # typecheck + lint + 52 tests
+npm run dev           # / lists the seeded drop, read through the DAL
+```
+
+The database-level rules are the ones that still hold when somebody bypasses the app, so
+they are worth checking directly. Both of these must fail — the first is the licence gate,
+the second is Core rule 3:
+
+```sql
+UPDATE set_pieces SET track_id = NULL WHERE status = 'published';
+-- ERROR: set piece <id> cannot be published: no track_id, so there is no licence to check
+
+SELECT user_id FROM set_piece_entry_blind LIMIT 1;
+-- ERROR: column "user_id" does not exist
+```
+
+Both were run against the live database and produced exactly those errors. Note there is
+**no `psql` on this machine** — use `npm run db:studio`, or a throwaway script using the
+`pg` client already in devDependencies. Easier still: `npm test` covers both, in
+`tests/integration/constraints.test.ts`, which runs every test inside a transaction it
+always rolls back.
 
 ### Prompt 0 — Project constitution — 2026-08-20
 

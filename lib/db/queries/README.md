@@ -19,4 +19,4 @@ export async function getSomething(actor: Actor, input: Input): Promise<Output>;
    needs a test proving the wrong actor gets a `ForbiddenError`.
 
 This layer is the replacement for the row-level security we gave up by moving off
-Supabase. It only works if it has no exceptions — see `/docs/decisions/0002-neon-drizzle-stack-auth.md`.
+Supabase. It only works if it has no exceptions — see `/docs/decisions/0002-neon-drizzle-neon-auth.md`.

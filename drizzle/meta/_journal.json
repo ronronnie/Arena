@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1787342650790,
+      "tag": "0000_real_king_bedlam",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1787342663925,
+      "tag": "0001_triggers_and_blind_view",
+      "breakpoints": true
+    }
+  ]
+}

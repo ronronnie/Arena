@@ -9,8 +9,17 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./tests/setup.ts'],
-    // Playwright owns tests/e2e. Vitest must not try to run those.
-    include: ['tests/unit/**/*.test.{ts,tsx}', 'lib/**/*.test.{ts,tsx}'],
+    /*
+     * Playwright owns tests/e2e. Vitest must not try to run those.
+     *
+     * tests/integration hits a real Postgres and skips itself when DATABASE_URL is
+     * absent, so `npm run check` still passes on a fresh clone with no credentials.
+     */
+    include: [
+      'tests/unit/**/*.test.{ts,tsx}',
+      'tests/integration/**/*.test.{ts,tsx}',
+      'lib/**/*.test.{ts,tsx}',
+    ],
     exclude: ['node_modules/**', '.next/**', 'tests/e2e/**'],
     coverage: {
       provider: 'v8',

@@ -40,7 +40,12 @@ const config = [
         {
           patterns: [
             {
-              group: ['@/lib/db/client', '**/db/client', 'drizzle-orm/*', '@neondatabase/serverless'],
+              group: [
+                '@/lib/db/client',
+                '**/db/client',
+                'drizzle-orm/*',
+                '@neondatabase/serverless',
+              ],
               message:
                 'Do not touch the database directly. Add a query to /lib/db/queries and import it from @/lib/db.',
             },

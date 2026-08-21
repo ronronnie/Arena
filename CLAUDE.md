@@ -198,13 +198,13 @@ npm run lint:fix
 npm run format         # prettier --write .
 npm run format:check
 
-npm test               # vitest run
+npm test               # vitest — unit tests, plus tests/integration when DATABASE_URL is set
 npm run test:watch
 npm run test:coverage
 npm run test:e2e       # playwright (boots the dev server itself)
 
 npm run db:generate    # generate a migration from schema.ts
-npm run db:migrate     # apply migrations (uses the unpooled connection)
+npm run db:migrate     # apply migrations (unpooled connection; see scripts/migrate.ts)
 npm run db:push        # push schema without a migration — local only
 npm run db:studio      # Drizzle Studio
 npm run db:seed        # seed fixture data
@@ -245,6 +245,12 @@ value **and** write an ADR recording what was learned.
 | **Eligibility check** | The set of conditions an entry must satisfy to be rated: correct brief, within the window, meets the brief's constraints, passes integrity checks.                      |
 | **Actor**             | Who a query runs on behalf of: a user, an anonymous visitor, or the system. Every data-access function takes one.                                                       |
 | **Hypothesis**        | A tunable number in `lib/config/hypotheses.ts` that is a guess, not a finding.                                                                                          |
+| **Track**             | The licensed music a set piece is performed to. Carries its own licence window, territory and contract reference.                                                       |
+| **Licence window**    | The period a track is cleared for. A brief cannot publish unless its track's window covers the whole drop, `opens_at` to `judging_ends_at`. Enforced by a trigger.      |
+| **Blind view**        | `set_piece_entry_blind` — the identity-free view the voting surface reads. Has no `user_id` column at all. Core rule 3 as a database object, not a select-list habit.   |
+| **Reveal**            | The state change after a vote is recorded, when a competitor's identity becomes readable. Only ever through `revealComparison`, and only for the voter who decided it.  |
+| **Fixture clip**      | A committed stand-in video under `public/fixtures/`. Generated, not sourced, so there is no licence to honour. How the voting surface gets built before Mux exists.     |
+| **Season result**     | A competitor's final standing in a season: rating, position, division, and whether they were promoted, held, or relegated.                                              |
 
 <!-- BEGIN:nextjs-agent-rules -->
 
