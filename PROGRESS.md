@@ -65,8 +65,11 @@ except for the `neon_auth` schema. Concretely, Prompt 1 must produce:
    sign-up → session → database round trip succeeded and the test user was cleaned up.
    Nothing auth-related is outstanding for Prompt 1.
 
-2. **Git remote.** The user asked to push over SSH but has not supplied the repository
-   URL. A local git repo exists with one commit; no remote is configured.
+2. ~~**Git remote.**~~ **Resolved 2026-08-21.** `origin` is
+   `git@github.com:ronronnie/Arena.git` and `main` is pushed and tracking. The remote was
+   given as an HTTPS URL but set to SSH: there are no HTTPS credentials on this machine
+   and no `gh` CLI, while the existing SSH key already authenticates as `ronronnie`, the
+   account that owns the repository. No CI is configured on it — see the gaps list.
 3. **The prize question** — from the prompt pack's pre-work, still unanswered and not
    solvable in code: what does winning actually get someone in week one, legally, in the
    launch market? Contest rules, age minimums, tax, skill-vs-chance and GST in India.
