@@ -1,102 +1,179 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
+@import './tokens.css';
 
 /*
- * Base token layer only. This is scaffolding, not the design language.
+ * Arena's design language: BROADCAST, NOT FEED.
  *
- * Prompt 2 defines Arena's actual design direction (broadcast not feed, typography-led,
- * per-category accent ramps) and will replace these values. What must survive is the
- * shape: shadcn/ui components read these variable names, so they exist from day one.
+ * This file does three things and nothing else:
+ *   1. maps the generated tokens onto Tailwind's theme, so `bg-surface` and `text-muted`
+ *      exist as utilities and no component ever writes a hex value;
+ *   2. maps the same tokens onto the shadcn/ui variable names, so shadcn primitives are
+ *      themed by Arena rather than by their defaults;
+ *   3. sets the base layer — typography, focus, touch targets, reduced motion.
  *
- * Light is the default and there is no automatic prefers-color-scheme switch — older
- * users overwhelmingly prefer light, and dark is opt-in via the .dark class.
+ * The values themselves live in lib/design/tokens.ts and arrive via ./tokens.css, which
+ * is generated. Do not add a colour here.
  */
 
 @custom-variant dark (&:is(.dark *));
 
-:root {
-  --radius: 0.625rem;
-
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-}
-
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-}
-
 @theme inline {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  /* ---- Arena semantic colours ---- */
+  --color-surface: var(--arena-surface);
+  --color-surface-raised: var(--arena-surface-raised);
+  --color-surface-sunken: var(--arena-surface-sunken);
+  --color-overlay: var(--arena-overlay);
 
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
+  --color-text: var(--arena-text);
+  --color-text-muted: var(--arena-text-muted);
+  --color-text-subtle: var(--arena-text-subtle);
+  --color-text-inverse: var(--arena-text-inverse);
+
+  --color-line: var(--arena-border);
+  --color-line-strong: var(--arena-border-strong);
+  --color-focus: var(--arena-focus);
+
+  --color-positive: var(--arena-positive);
+  --color-negative: var(--arena-negative);
+  --color-caution: var(--arena-caution);
+
+  /* ---- The category accent ramp. Re-themed by `data-category` on <html>. ---- */
+  --color-accent-soft: var(--arena-accent-soft);
+  --color-accent-text: var(--arena-accent-text);
+  --color-accent-base: var(--arena-accent-base);
+  --color-accent-strong: var(--arena-accent-strong);
+  --color-on-accent: var(--arena-accent-on-accent);
+
+  /* ---- Division tiers ---- */
+  --color-tier-bronze: var(--arena-tier-bronze);
+  --color-tier-silver: var(--arena-tier-silver);
+  --color-tier-gold: var(--arena-tier-gold);
+  --color-tier-elite: var(--arena-tier-elite);
+
+  /* ---- shadcn/ui compatibility. Its primitives read these names. ---- */
+  --color-background: var(--arena-surface);
+  --color-foreground: var(--arena-text);
+  --color-card: var(--arena-surface-raised);
+  --color-card-foreground: var(--arena-text);
+  --color-popover: var(--arena-surface-raised);
+  --color-popover-foreground: var(--arena-text);
+  --color-primary: var(--arena-accent-base);
+  --color-primary-foreground: var(--arena-accent-on-accent);
+  --color-secondary: var(--arena-surface-sunken);
+  --color-secondary-foreground: var(--arena-text);
+  --color-muted: var(--arena-surface-sunken);
+  --color-muted-foreground: var(--arena-text-muted);
+  --color-accent: var(--arena-accent-soft);
+  --color-accent-foreground: var(--arena-accent-text);
+  --color-destructive: var(--arena-negative);
+  --color-border: var(--arena-border);
+  --color-input: var(--arena-border-strong);
+  --color-ring: var(--arena-focus);
+
+  /* ---- Type ---- */
+  --text-2xs: var(--arena-text-2xs);
+  --text-xs: var(--arena-text-xs);
+  --text-sm: var(--arena-text-sm);
+  --text-base: var(--arena-text-base);
+  --text-lg: var(--arena-text-lg);
+  --text-xl: var(--arena-text-xl);
+  --text-2xl: var(--arena-text-2xl);
+  --text-3xl: var(--arena-text-3xl);
+  --text-display: var(--arena-text-display);
+  --text-hero: var(--arena-text-hero);
+
+  --leading-tight: var(--arena-leading-tight);
+  --leading-snug: var(--arena-leading-snug);
+  --leading-normal: var(--arena-leading-normal);
+
+  --tracking-tighter: var(--arena-tracking-tighter);
+  --tracking-tight: var(--arena-tracking-tight);
+  --tracking-wide: var(--arena-tracking-wide);
+  --tracking-widest: var(--arena-tracking-widest);
 
   --font-sans: var(--font-arena-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-arena-display), var(--font-arena-sans), ui-sans-serif, sans-serif;
   --font-mono: var(--font-arena-mono), ui-monospace, monospace;
+
+  /* ---- Shape and depth ---- */
+  --radius-sm: var(--arena-radius-sm);
+  --radius-md: var(--arena-radius-md);
+  --radius-lg: var(--arena-radius-lg);
+  --radius-xl: var(--arena-radius-xl);
+
+  --shadow-sm: var(--arena-shadow-sm);
+  --shadow-md: var(--arena-shadow-md);
+  --shadow-lg: var(--arena-shadow-lg);
+  --shadow-overlay: var(--arena-shadow-overlay);
+
+  /* ---- Motion ---- */
+  --ease-standard: var(--arena-ease-standard);
+  --ease-entrance: var(--arena-ease-entrance);
+  --ease-exit: var(--arena-ease-exit);
+  --ease-spring: var(--arena-ease-spring);
 }
 
 @layer base {
+  :root {
+    /*
+     * The interactive floor. Accessibility here is age-inclusivity, not compliance: this
+     * is what lets a sixty-year-old vocal coach use the same voting screen as a
+     * fifteen-year-old. Every interactive primitive in components/ui is measured against
+     * it by tests/e2e/design-system.spec.ts.
+     */
+    --arena-touch-target: 48px;
+  }
+
   * {
-    @apply border-border outline-ring/50;
+    @apply border-line;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
   }
 
   body {
-    @apply bg-background text-foreground;
+    background-color: var(--arena-surface);
+    color: var(--arena-text);
+    font-family: var(--font-sans);
+    font-size: var(--arena-text-base);
+    line-height: var(--arena-leading-normal);
+    /* Sessions are bounded and purposeful — nothing here scrolls forever. */
+    overscroll-behavior-y: none;
   }
 
-  /* Rule 8 / accessibility: motion is a reward, never a requirement. */
+  /*
+   * Numbers are typographic events. Tabular figures everywhere a number can change, so a
+   * rating ticking from 1499 to 1503 does not reflow the line it sits on.
+   */
+  .arena-numeric {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+    letter-spacing: var(--arena-tracking-tight);
+  }
+
+  /* The small-caps scoreboard label. Used for every section heading in the product. */
+  .arena-label {
+    font-size: var(--arena-text-2xs);
+    font-weight: var(--arena-weight-semibold);
+    letter-spacing: var(--arena-tracking-widest);
+    text-transform: uppercase;
+    color: var(--arena-text-muted);
+  }
+
+  /* One focus treatment, applied consistently. Keyboard operation is not optional. */
+  :focus-visible {
+    outline: 2px solid var(--arena-focus);
+    outline-offset: 2px;
+    border-radius: var(--arena-radius-sm);
+  }
+
+  /*
+   * Core rule 8 and WCAG 2.3.3: motion is a reward, never a requirement. Every signature
+   * animation also has a non-animated equivalent that carries the same information — see
+   * components/motion — so switching this on loses delight, never meaning.
+   */
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,

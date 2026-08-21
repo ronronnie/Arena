@@ -95,7 +95,7 @@ spam, no manipulative streaks, no "your rank is dropping!" panic.
 | Layer         | Choice                             | Notes                                                                             |
 | ------------- | ---------------------------------- | --------------------------------------------------------------------------------- |
 | Framework     | Next.js 16, App Router             | TypeScript strict, React 19. See ADR 0003 — the pack pins 15                      |
-| Styling       | Tailwind v4 + shadcn/ui            | Tokens in `app/globals.css`; design language is Prompt 2                          |
+| Styling       | Tailwind v4 + shadcn/ui            | Tokens in `lib/design/tokens.ts`; `app/tokens.css` is GENERATED — see ADR 0005    |
 | Database      | **Neon** Postgres                  | Serverless driver, pooled for app / unpooled for DDL                              |
 | ORM           | **Drizzle**                        | `snake_case` casing, schema in `lib/db/schema.ts`                                 |
 | Auth          | **Neon Auth** (hosted Better Auth) | Identity lives in the `neon_auth` schema of our own Postgres; the table is `user` |
@@ -133,24 +133,30 @@ cookie signed with our own `NEON_AUTH_COOKIE_SECRET`.
 
 ```
 /app                    Next.js routes. Thin. No database access, ever.
+  /design-system        The component gallery. URL-driven: ?theme=&scale=&category=
+  tokens.css            GENERATED from lib/design/tokens.ts. Do not hand-edit.
 /components             React components.
-  /ui                   shadcn/ui primitives.
+  /ui                   shadcn/ui primitives, restyled to Arena tokens.
+  /motion               The signature moments. Each has a reduced-motion equivalent.
 /lib                    Domain logic. FRAMEWORK-FREE — no React, no Next imports.
   /config               hypotheses.ts and other tunables.
+  /design               tokens.ts (source of truth), color.ts (WCAG maths), copy.ts.
   /domain               Pure business logic: rating, eligibility, divisions, pairing.
   /db                   The ONLY path to the database.
     /queries            One file per aggregate. Every function takes an Actor first.
     client.ts           Raw Drizzle client. Importable only from within /lib/db.
     actor.ts            Who is asking. Framework-free authorization primitives.
     schema.ts           Drizzle schema.
+    auth-schema.ts      neon_auth.user, read-only. Kept out of drizzle-kit's sight.
   /auth                 Neon Auth wiring. The one place a session becomes an Actor.
   /ui                   Small UI helpers (cn).
 /inngest                Background and scheduled functions.
 /drizzle                Generated migrations. Do not hand-edit.
-/scripts                seed.ts and one-off operational scripts.
+/scripts                seed.ts, migrate.ts, build-tokens.ts, make-fixtures.sh.
 /tests
   /unit                 Vitest.
-  /e2e                  Playwright.
+  /integration          Vitest against a real Postgres. Skips without DATABASE_URL.
+  /e2e                  Playwright, including visual regression baselines.
 /docs
   /decisions            ADRs, numbered.
 ```
@@ -203,6 +209,8 @@ npm run test:watch
 npm run test:coverage
 npm run test:e2e       # playwright (boots the dev server itself)
 
+npm run design:tokens  # regenerate app/tokens.css from lib/design/tokens.ts
+
 npm run db:generate    # generate a migration from schema.ts
 npm run db:migrate     # apply migrations (unpooled connection; see scripts/migrate.ts)
 npm run db:push        # push schema without a migration — local only
@@ -251,6 +259,9 @@ value **and** write an ADR recording what was learned.
 | **Reveal**            | The state change after a vote is recorded, when a competitor's identity becomes readable. Only ever through `revealComparison`, and only for the voter who decided it.  |
 | **Fixture clip**      | A committed stand-in video under `public/fixtures/`. Generated, not sourced, so there is no licence to honour. How the voting surface gets built before Mux exists.     |
 | **Season result**     | A competitor's final standing in a season: rating, position, division, and whether they were promoted, held, or relegated.                                              |
+| **Accent ramp**       | The five-colour set (`soft`, `text`, `base`, `strong`, `onAccent`) that themes one category. Swapped at the root by `data-category`; defined in `lib/design/tokens.ts`. |
+| **Type scope**        | An element carrying `data-arena-type-scope`, which re-derives the whole type scale from its own `--arena-font-root`. How 150% and 200% dynamic type are rendered.       |
+| **Signature moment**  | One of the four places the product is allowed ceremony: the blind reveal, the scrub-sync compare, the rating tick, and the season result card.                          |
 
 <!-- BEGIN:nextjs-agent-rules -->
 

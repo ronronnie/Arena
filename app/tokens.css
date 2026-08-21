@@ -1,0 +1,172 @@
+/*
+ * GENERATED FILE — DO NOT EDIT.
+ *
+ * Source of truth: lib/design/tokens.ts
+ * Regenerate:      npm run design:tokens
+ *
+ * tests/unit/tokens-sync.test.ts fails if this file and the tokens disagree, so editing
+ * it by hand will be caught rather than quietly kept.
+ */
+
+:root {
+  /* The one property the whole type scale hangs off. */
+  --arena-font-root: 1rem;
+
+  --arena-leading-tight: 1.05;
+  --arena-leading-snug: 1.25;
+  --arena-leading-normal: 1.55;
+  --arena-tracking-tighter: -0.02em;
+  --arena-tracking-tight: -0.01em;
+  --arena-tracking-normal: 0em;
+  --arena-tracking-wide: 0.06em;
+  --arena-tracking-widest: 0.14em;
+  --arena-weight-regular: 400;
+  --arena-weight-medium: 500;
+  --arena-weight-semibold: 600;
+  --arena-weight-bold: 700;
+
+  --arena-space-0: 0rem;
+  --arena-space-1: 0.25rem;
+  --arena-space-2: 0.5rem;
+  --arena-space-3: 0.75rem;
+  --arena-space-4: 1rem;
+  --arena-space-5: 1.25rem;
+  --arena-space-6: 1.5rem;
+  --arena-space-8: 2rem;
+  --arena-space-10: 2.5rem;
+  --arena-space-12: 3rem;
+  --arena-space-16: 4rem;
+  --arena-space-20: 5rem;
+  --arena-space-px: 1px;
+  --arena-radius-none: 0px;
+  --arena-radius-sm: 0.375rem;
+  --arena-radius-md: 0.625rem;
+  --arena-radius-lg: 0.875rem;
+  --arena-radius-xl: 1.25rem;
+  --arena-radius-full: 9999px;
+  --arena-shadow-none: none;
+  --arena-shadow-sm: 0 1px 2px oklch(0.19 0.012 255 / 0.06);
+  --arena-shadow-md: 0 2px 8px oklch(0.19 0.012 255 / 0.08);
+  --arena-shadow-lg: 0 8px 28px oklch(0.19 0.012 255 / 0.12);
+  --arena-shadow-overlay: 0 -8px 40px oklch(0.19 0.012 255 / 0.18);
+
+  --arena-duration-instant: 0ms;
+  --arena-duration-fast: 120ms;
+  --arena-duration-base: 200ms;
+  --arena-duration-reveal: 380ms;
+  --arena-duration-stage: 520ms;
+  --arena-ease-standard: cubic-bezier(0.2, 0, 0.1, 1);
+  --arena-ease-entrance: cubic-bezier(0, 0, 0.2, 1);
+  --arena-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --arena-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Light theme. */
+  --arena-surface: oklch(0.988 0.002 255);
+  --arena-surface-raised: oklch(1 0 0);
+  --arena-surface-sunken: oklch(0.958 0.004 255);
+  --arena-overlay: oklch(0.19 0.012 255 / 0.55);
+  --arena-text: oklch(0.19 0.012 255);
+  --arena-text-muted: oklch(0.46 0.012 255);
+  --arena-text-subtle: oklch(0.53 0.012 255);
+  --arena-text-inverse: oklch(0.99 0.002 255);
+  --arena-border: oklch(0.9 0.005 255);
+  --arena-border-strong: oklch(0.62 0.01 255);
+  --arena-focus: oklch(0.55 0.13 255);
+  --arena-positive: oklch(0.5 0.11 156);
+  --arena-negative: oklch(0.53 0.13 32);
+  --arena-caution: oklch(0.52 0.11 72);
+
+  --arena-tier-bronze: oklch(0.48 0.08 55);
+  --arena-tier-silver: oklch(0.5 0.012 255);
+  --arena-tier-gold: oklch(0.48 0.1 85);
+  --arena-tier-elite: oklch(0.45 0.14 300);
+
+  /* Accent, before any category is applied. */
+  --arena-accent-soft: oklch(0.95 0.03 255);
+  --arena-accent-text: oklch(0.48 0.14 255);
+  --arena-accent-base: oklch(0.45 0.15 255);
+  --arena-accent-strong: oklch(0.38 0.14 255);
+  --arena-accent-on-accent: oklch(0.99 0.005 255);
+}
+
+:root,
+[data-arena-type-scope] {
+  --arena-text-2xs: calc(var(--arena-font-root) * 0.6875);
+  --arena-text-xs: calc(var(--arena-font-root) * 0.75);
+  --arena-text-sm: calc(var(--arena-font-root) * 0.875);
+  --arena-text-base: calc(var(--arena-font-root) * 1);
+  --arena-text-lg: calc(var(--arena-font-root) * 1.125);
+  --arena-text-xl: calc(var(--arena-font-root) * 1.375);
+  --arena-text-2xl: calc(var(--arena-font-root) * 1.75);
+  --arena-text-3xl: calc(var(--arena-font-root) * 2.25);
+  --arena-text-display: calc(var(--arena-font-root) * 3);
+  --arena-text-hero: calc(var(--arena-font-root) * 4.25);
+}
+
+/* A subtree that re-derives the scale must also restate its own body size. */
+[data-arena-type-scope] {
+  font-size: var(--arena-text-base);
+}
+
+.dark {
+  --arena-surface: oklch(0.17 0.012 255);
+  --arena-surface-raised: oklch(0.22 0.014 255);
+  --arena-surface-sunken: oklch(0.13 0.01 255);
+  --arena-overlay: oklch(0.09 0.01 255 / 0.68);
+  --arena-text: oklch(0.97 0.003 255);
+  --arena-text-muted: oklch(0.79 0.012 255);
+  --arena-text-subtle: oklch(0.72 0.012 255);
+  --arena-text-inverse: oklch(0.17 0.012 255);
+  --arena-border: oklch(0.3 0.014 255);
+  --arena-border-strong: oklch(0.56 0.016 255);
+  --arena-focus: oklch(0.78 0.12 255);
+  --arena-positive: oklch(0.8 0.13 156);
+  --arena-negative: oklch(0.78 0.12 32);
+  --arena-caution: oklch(0.82 0.12 82);
+
+  --arena-tier-bronze: oklch(0.78 0.09 62);
+  --arena-tier-silver: oklch(0.82 0.012 255);
+  --arena-tier-gold: oklch(0.84 0.12 90);
+  --arena-tier-elite: oklch(0.8 0.13 300);
+
+  --arena-accent-soft: oklch(0.28 0.05 255);
+  --arena-accent-text: oklch(0.8 0.12 255);
+  --arena-accent-base: oklch(0.72 0.14 255);
+  --arena-accent-strong: oklch(0.8 0.13 255);
+  --arena-accent-on-accent: oklch(0.17 0.02 255);
+}
+
+/* Category theming. `data-category` on <html> re-themes the accent ramp. */
+[data-category='bharatanatyam'] {
+  --arena-accent-soft: oklch(0.95 0.045 75);
+  --arena-accent-text: oklch(0.46 0.1 65);
+  --arena-accent-base: oklch(0.44 0.1 65);
+  --arena-accent-strong: oklch(0.37 0.09 65);
+  --arena-accent-on-accent: oklch(0.99 0.01 75);
+}
+
+.dark[data-category='bharatanatyam'],
+.dark [data-category='bharatanatyam'] {
+  --arena-accent-soft: oklch(0.29 0.05 70);
+  --arena-accent-text: oklch(0.83 0.12 78);
+  --arena-accent-base: oklch(0.78 0.13 78);
+  --arena-accent-strong: oklch(0.85 0.12 78);
+  --arena-accent-on-accent: oklch(0.18 0.02 70);
+}
+
+[data-category='metal-vocals'] {
+  --arena-accent-soft: oklch(0.94 0.035 295);
+  --arena-accent-text: oklch(0.47 0.16 295);
+  --arena-accent-base: oklch(0.44 0.17 295);
+  --arena-accent-strong: oklch(0.37 0.16 295);
+  --arena-accent-on-accent: oklch(0.99 0.005 295);
+}
+
+.dark[data-category='metal-vocals'],
+.dark [data-category='metal-vocals'] {
+  --arena-accent-soft: oklch(0.28 0.06 295);
+  --arena-accent-text: oklch(0.81 0.12 295);
+  --arena-accent-base: oklch(0.74 0.14 295);
+  --arena-accent-strong: oklch(0.81 0.13 295);
+  --arena-accent-on-accent: oklch(0.17 0.02 295);
+}

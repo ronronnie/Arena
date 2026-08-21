@@ -2,56 +2,64 @@
 
 ## Current state
 
-**The domain model exists and is live.** 20 tables and 1 view in `public` on the Neon
-database, two triggers, a data-access layer over them, and a seed that produces a drop you
-can actually judge. There is still **no feature UI** — that starts at Prompt 2.
+**The domain model and the design language both exist.** 20 tables and 1 view live on
+Neon, a data-access layer over them, a seed that produces a judgeable drop, and a
+token-driven component library with a gallery at `/design-system`. There are still **no
+feature screens** — voting, onboarding and the drop UI start at Prompt 3.
 
-`npm run build`, `npm run check` and `npm run test:e2e` all pass. 52 unit and integration
-tests, 2 Playwright smoke tests. The build succeeds with **no environment variables set**,
-which was re-verified this session and had in fact regressed (see the fixes below).
+`npm run build`, `npm run check` and `npm run test:e2e` all pass: 146 unit and integration
+tests, 23 Playwright tests (7 visual-regression baselines, mobile only). The build
+succeeds with **no environment variables set**.
 
-What exists now, on top of the Prompt 0 scaffold:
+What exists, on top of the Prompt 0 scaffold:
 
-- `lib/db/schema.ts` — the full domain model. Two lanes in two separate tables, a
-  composite foreign key making cross-brief comparisons impossible, and CHECK constraints
-  on every invariant that can be expressed as one.
-- `drizzle/0000_real_king_bedlam.sql` + `drizzle/0001_triggers_and_blind_view.sql` —
-  applied. The second is hand-written: the licence trigger, the no-self-vote trigger, and
-  the `set_piece_entry_blind` view.
-- `lib/db/queries/*` — 27 actor-first functions across profiles, briefs, entries,
-  comparisons, ratings and follows, re-exported through `lib/db/index.ts`.
+_Data (Prompt 1)_
+
+- `lib/db/schema.ts` — two lanes in two separate tables, a composite foreign key making
+  cross-brief comparisons impossible, CHECK constraints on every expressible invariant.
+- `drizzle/0000_*.sql` + `drizzle/0001_triggers_and_blind_view.sql` — applied. The second
+  is hand-written: the licence trigger, the no-self-vote trigger, and the
+  `set_piece_entry_blind` view.
+- `lib/db/queries/*` — 27 actor-first functions, re-exported through `lib/db/index.ts`.
 - `scripts/seed.ts` — 2 categories, 1 open season, 3 published briefs on licensed tracks,
-  60 competitors, 120 eligible entries, 800 comparisons, 12 signature entries, 200 follows.
-  Deterministic, and re-runnable.
-- `public/fixtures/clip-01..08.mp4` — eight generated ~2KB clips, plus the ffmpeg script
-  that makes them.
-- `/` now reads the seeded drop through the DAL, proving the whole path end to end.
+  60 competitors, 120 eligible entries, 800 comparisons. Deterministic and re-runnable.
 
-Still absent: the design language, every screen, auth-gated routing, Mux, Inngest,
-Upstash, and any rating maths (`ratings` rows are seeded, not computed).
+_Design (Prompt 2)_
 
-**The stack diverges from the prompt pack.** Supabase was replaced with Neon + Drizzle +
-Neon Auth + Vercel Blob. This has real consequences for Core rule 7 — read
-`/docs/decisions/0002-neon-drizzle-neon-auth.md` before writing a single query. Prompt 1
-added a second divergence, on lane modelling: `/docs/decisions/0004-two-lanes-two-tables.md`.
+- `lib/design/tokens.ts` — the single source of truth. `app/tokens.css` is GENERATED from
+  it by `npm run design:tokens`, and a test fails if they drift. ADR 0005.
+- `lib/design/color.ts` — OKLCH → sRGB and WCAG contrast, so AA is a test (79 assertions)
+  rather than an intention.
+- 13 components in `components/ui`, 3 signature motion components in `components/motion`.
+- `/design-system` — every component in every state, addressable by URL:
+  `?theme=dark&scale=200&category=metal-vocals`.
+
+Still absent: every feature screen, auth-gated routing, Mux, Inngest, Upstash, and any
+rating maths (`ratings` rows are seeded, not computed).
+
+**The stack diverges from the prompt pack** in three recorded places: Neon instead of
+Supabase (ADR 0002 — read it before writing a query), two entry tables instead of one
+(ADR 0004), and tokens in TypeScript with generated CSS (ADR 0005).
 
 ## Next step
 
-Run **Prompt 2 — Design language (before any feature UI)** from
+Run **Prompt 3 — Auth and audience-first onboarding** from
 `/docs/arena-prompt-pack-FINAL.md`.
 
-It replaces the neutral token layer in `app/globals.css` wholesale, so it should happen
-before any screen is built rather than after. Two things from this repo to carry into it:
+Four things in this repo are waiting specifically for it:
 
-- **Light is the default and dark is opt-in via a `.dark` class** — decided in Prompt 0,
-  do not add a `prefers-color-scheme` auto-switch.
-- **Each category gets its own accent ramp** (see the glossary entry for Category). Two
-  categories exist in the seed — `bharatanatyam` and `metal-vocals` — so the ramp
-  mechanism has something real to be tested against.
-
-The placeholder markup on `/` is scaffolding, not design. Prompt 2 may replace all of it;
-what must keep working is that it reads the drop through `@/lib/db` with an `anonymous()`
-actor.
+- **`isMinor` is hardcoded `true`** in `lib/auth/actor.ts`. Prompt 3 collects a date of
+  birth at onboarding and must replace it. `lib/domain/age.ts` already derives the answer
+  and treats an unknown date of birth as a minor — wire the session to that, and do not
+  add a stored `is_minor` column (ADR 0004 explains why).
+- **`profiles.dob` exists and is nullable.** Onboarding fills it. `profiles.handle` has a
+  unique index but no format validation; handle rules belong to this prompt.
+- **Nothing mounts `auth.middleware()`.** `@neondatabase/auth` provides it; Prompt 0 left
+  it out deliberately because there were no protected routes to guess at. There are now.
+- **Core rule 4 is the whole point.** Everyone signs up as a judge. There is no "I'm a
+  performer" option at signup, and `createSetPieceEntry` already refuses an account
+  without a `competeUnlockedAt`, so the UI must not imply otherwise. `ProgressRing` was
+  built for the unlock counter and is ready to use.
 
 ## Open questions
 
@@ -100,6 +108,133 @@ actor.
    a `test:integration` script rather than deleting the coverage.
 
 ## Completed
+
+### Prompt 2 — Design language — 2026-08-22
+
+**Files created/changed**
+
+_Tokens_
+
+- `lib/design/tokens.ts` — **new.** Semantic colour for both themes, three category accent
+  ramps, four division tier colours, type scale, line heights, tracking, weights, spacing,
+  radii, elevation, durations, easings, `MIN_TOUCH_TARGET_PX`.
+- `lib/design/color.ts` — **new.** OKLCH → sRGB (Ottosson's OKLab reference), WCAG
+  relative luminance and contrast ratio. Framework-free, so contrast is unit-testable.
+- `lib/design/css.ts` — **new.** Renders the tokens to CSS custom properties.
+- `lib/design/copy.ts` — **new.** Banned words, banned slang, emoji pattern.
+- `scripts/build-tokens.ts` — **new.** `npm run design:tokens` writes `app/tokens.css`.
+- `app/tokens.css` — **generated. Do not hand-edit.**
+- `app/globals.css` — rewritten. Maps tokens onto Tailwind's `@theme` and onto the
+  shadcn/ui variable names, plus the base layer: `.arena-numeric`, `.arena-label`, one
+  focus treatment, the 48px floor, reduced motion.
+- `app/layout.tsx` — Inter (UI), Archivo (numbers and results), Geist Mono (timing
+  labels). `data-category="default"` on `<html>`.
+
+_Components_
+
+- `components/ui/` — `button`, `card`, `video-tile`, `rating-badge`, `league-badge`,
+  `stat-delta`, `set-piece-card`, `countdown-bar`, `sheet`, `tabs`, `toast`,
+  `progress-ring`, `empty-state`.
+- `components/motion/` — `reveal-card` (380ms spring flip), `rating-ticker` (a real
+  per-digit odometer), `result-reveal` (staged), `use-reduced-motion`.
+- `app/design-system/page.tsx` + `interactive.tsx` — **new.** The gallery.
+- `app/page.tsx` — restyled onto the tokens; still reads the seeded drop through the DAL.
+
+_Tests_
+
+- `tests/unit/tokens-contrast.test.ts` — 79 assertions.
+- `tests/unit/tokens-sync.test.ts` — generated CSS must match the tokens.
+- `tests/unit/copy-rules.test.ts` — walks every `.tsx` in `app/` and `components/`.
+- `tests/e2e/design-system.spec.ts` + 7 committed baselines (~2.3 MB).
+
+_Dependencies added_
+
+- `@radix-ui/react-dialog`, `@radix-ui/react-tabs`, `@radix-ui/react-slot`, `sonner`.
+
+**Decisions made**
+
+1. **Tokens in TypeScript, CSS generated from them, with a drift test.** Tailwind v4 wants
+   tokens in CSS; the prompt pack wants them in TypeScript; keeping both by hand is how a
+   design system stops being trusted. ADR 0005.
+
+2. **AA contrast is a test, not an intention.** 79 pairings — every text token on every
+   surface, focus rings and meaningful borders at 3:1, every accent ramp in both themes
+   including hover states, which is where these usually slip. Writing OKLCH → sRGB by hand
+   was the cost of that, and it is about 60 lines.
+
+3. **Category hues must be more than 30° apart.** Also a test. Two disciplines converging
+   on the same accent would quietly defeat the point of theming.
+
+4. **No Radix for motion; CSS only.** The three signature components are CSS transitions
+   plus state. A spring flip, a digit strip and three staggered delays did not justify a
+   motion library on a product whose thesis is bounded sessions.
+
+5. **`VideoTile` has no identity prop, and must never get one.** Core rule 3 enforced by
+   the type rather than by care: a component that cannot accept a handle cannot leak one
+   during a blind vote.
+
+6. **`RatingBadge` and `RatingTicker` require `onExplain`.** Core rule 6 says every number
+   is explainable, so there is deliberately no display-only variant of either.
+
+7. **The gallery is URL-driven, not stateful.** `?theme=&scale=&category=` means the
+   screenshot suite navigates rather than replays clicks.
+
+8. **Visual baselines are mobile-only.** Mobile is the primary target and every baseline
+   is a committed PNG. Desktop still runs the accessibility and overflow tests.
+
+9. **`sm` buttons are 36px tall with a 48px hit area** via an `::after` overlay, so a dense
+   scoreboard row stays pressable. The touch-target test measures the overlay, not the box
+   — an earlier version failed those buttons for being exactly as designed.
+
+**Three bugs found by the tests, worth recording**
+
+- **The type scale did not work at all.** `--arena-text-*` were declared on `:root` as
+  `calc(var(--arena-font-root) * n)`, and the gallery overrode `--arena-font-root` on a
+  wrapper. A custom property referencing another resolves in the scope where it is
+  _declared_, so descendants inherited an already-computed value: 100%, 150% and 200%
+  rendered identically at 5771px. Caught by comparing screenshot heights. Fixed by
+  emitting the steps for `[data-arena-type-scope]` as well. Full account in ADR 0005.
+- **`RevealCard` set `inert=""`**, which React treats as false — so the hidden face of the
+  flip was still focusable and still in the accessibility tree. A keyboard user could have
+  reached a competitor's name before voting, which is Core rule 3 broken through a route
+  nobody would have looked at.
+- **Two layout breaks at 200% type**, both invisible until the scale bug above was fixed: a
+  `w-28` label overflowing its own box, and `whitespace-nowrap` on a full-width button
+  pushing the page sideways.
+
+**Deferred / known gaps**
+
+- **The scrub-sync compare is not built.** The design direction names it as a signature
+  moment — two clips scrubbed to the same timestamp, which no other platform can offer
+  because no other platform has everyone performing the same brief. It needs the voting
+  screen to exist, so it belongs to Prompt 5.
+- **No sound.** The direction asks for the blind reveal to have "motion and sound". Audio
+  needs an autoplay-policy and mute-preference story, and a sixty-year-old judging on a
+  bus should not be ambushed. Revisit with Prompt 5.
+- **No desktop visual baselines.** See decision 8.
+- **`EMOJI_PATTERN` is range-based**, so an exotic new pictograph could slip through. It
+  covers the ranges that actually appear in product copy.
+- **The copy scan is a regex, not a parser.** It reads JSX text nodes and prose props, and
+  is deliberately conservative — it would rather miss a string than cry wolf and be
+  deleted. Strings assembled at runtime should call `assertSystemCopy` instead.
+- **No `prefers-contrast: more` variant**, and no reduced-transparency handling.
+- **Tier colours are not category-themed.** Bronze through elite are fixed metallics in
+  every discipline, which seemed right — a division is a division — but is untested.
+
+**How to verify it works**
+
+```bash
+npm run check                      # 146 tests, including 79 contrast assertions
+npm run design:tokens              # regenerate; `npm run check` fails if you forget
+npx playwright test tests/e2e/design-system.spec.ts
+npm run dev                        # then open /design-system
+```
+
+The three axes are worth clicking through by hand at least once:
+
+- `/design-system?theme=dark`
+- `/design-system?scale=200` — everything should scale and nothing should scroll sideways
+- `/design-system?category=metal-vocals` — accents go violet, chrome stays neutral
 
 ### Prompt 1 — Domain model, licensing gate, and a seed that works — 2026-08-22
 
