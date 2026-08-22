@@ -273,6 +273,10 @@ value **and** write an ADR recording what was learned.
 | **Phase**             | What is happening in a drop right now — `upcoming`, `open`, `judging`, `results` — DERIVED from the clock by `lib/domain/dropLifecycle.ts`, never stored. See ADR 0007. |
 | **Status**            | The stored `set_pieces.status` column: what an admin or a job decided. Not the same as phase, and only ever shown on admin screens.                                     |
 | **Drop guard**        | The daily job that warns when an active category has no published brief within 72 hours of needing one. A missed drop breaks the ritual.                                |
+| **Information gain**  | How much a comparison is expected to teach: close ratings and high uncertainty score highest. Half of the pairing score in `lib/domain/pairing.ts`.                     |
+| **View deficit**      | How badly a pair needs attention, from the less-seen of the two. Weighted to be able to beat information gain — "guaranteed attention" is a promise, not a preference.  |
+| **Skip**              | A judge declining to choose. Recorded, never counted toward a rating or the compete-unlock — otherwise the fastest route to entering would be tapping skip.             |
+| **Scrub-sync**        | Dragging both clips in a pair to the same moment. Only meaningful because everyone performed the same brief, which is why it is a signature moment.                     |
 
 <!-- BEGIN:nextjs-agent-rules -->
 

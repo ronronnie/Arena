@@ -194,7 +194,14 @@ describe('comparisons — blind before, revealed after (Core rule 3)', () => {
   });
 
   it('refuses an anonymous visitor recording a vote', async () => {
-    await expectRefusal(() => recordVote(anonymous(), { comparisonId: 'c1', winnerEntryId: 'e1' }));
+    await expectRefusal(() =>
+      recordVote(anonymous(), {
+        comparisonId: 'c1',
+        winnerEntryId: 'e1',
+        decisionMs: 4200,
+        bothWatched: true,
+      }),
+    );
   });
 
   it('refuses an anonymous visitor revealing identities', async () => {

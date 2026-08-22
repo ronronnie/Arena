@@ -22,6 +22,13 @@
       "when": 1787391096329,
       "tag": "0002_military_thing",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1787416491429,
+      "tag": "0003_little_thunderbolts",
+      "breakpoints": true
     }
   ]
 }

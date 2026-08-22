@@ -473,6 +473,28 @@ export const comparisons = pgTable(
     /** Vote integrity (Prompt 14) can discount a vote without deleting the evidence. */
     isCounted: boolean('is_counted').notNull().default(true),
     discountReason: text('discount_reason'),
+
+    /*
+     * Vote-quality signals. Recorded here, used by Prompt 14.
+     *
+     * These are about the JUDGEMENT, not the judge: a two-second decision where neither
+     * clip was watched is weak evidence whoever cast it, and a considered one is strong
+     * evidence even from a new account. Storing them per comparison rather than
+     * aggregating onto the profile keeps that distinction available later.
+     */
+
+    /** Milliseconds from the pair appearing to the choice. Null while undecided. */
+    decisionMs: integer('decision_ms'),
+    /** Did the voter actually watch enough of BOTH clips to be comparing them? */
+    bothWatched: boolean('both_watched').notNull().default(false),
+    /**
+     * The voter passed rather than choosing.
+     *
+     * A skip is a real signal and is kept: "I could not tell these apart" is information,
+     * and silently discarding skips would make the pairing look better than it is. It
+     * never feeds a rating — `isCounted` is false with a stated reason.
+     */
+    skipped: boolean('skipped').notNull().default(false),
   },
   (t) => [
     // Both entries must belong to THIS comparison's set piece. Declarative, not a trigger.
@@ -497,15 +519,28 @@ export const comparisons = pgTable(
           OR ${t.winnerEntryId} = ${t.entryA}
           OR ${t.winnerEntryId} = ${t.entryB}`,
     ),
+    /*
+     * The three legal shapes of a comparison, and nothing else:
+     *   undecided — no decision time, no winner, not skipped
+     *   skipped   — decided, no winner
+     *   decided   — decided, with a winner
+     *
+     * Written as one constraint rather than three so a row cannot satisfy them
+     * individually and still be nonsense (skipped AND carrying a winner, say).
+     */
     check(
-      'comparisons_decided_has_winner',
-      sql`(${t.decidedAt} IS NULL AND ${t.winnerEntryId} IS NULL)
-          OR (${t.decidedAt} IS NOT NULL AND ${t.winnerEntryId} IS NOT NULL)`,
+      'comparisons_decision_shape',
+      sql`(${t.decidedAt} IS NULL AND ${t.winnerEntryId} IS NULL AND ${t.skipped} = false)
+          OR (${t.decidedAt} IS NOT NULL AND ${t.skipped} = true AND ${t.winnerEntryId} IS NULL)
+          OR (${t.decidedAt} IS NOT NULL AND ${t.skipped} = false AND ${t.winnerEntryId} IS NOT NULL)`,
     ),
     check(
       'comparisons_discount_reason_present',
       sql`${t.isCounted} OR ${t.discountReason} IS NOT NULL`,
     ),
+    // A skip is evidence about the pairing, never about a competitor.
+    check('comparisons_skip_is_not_counted', sql`NOT ${t.skipped} OR NOT ${t.isCounted}`),
+    check('comparisons_decision_ms_sane', sql`${t.decisionMs} IS NULL OR ${t.decisionMs} >= 0`),
   ],
 );
 

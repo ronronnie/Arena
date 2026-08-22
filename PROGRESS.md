@@ -2,15 +2,14 @@
 
 ## Current state
 
-**Data model, design language, auth and the weekly drop all exist.** 20 tables and 1 view
-live on Neon, a data-access layer over them, a seed that produces a judgeable drop, a
-token-driven component library at `/design-system`, a working sign-in and onboarding flow,
-and the drop lifecycle with its screens and scheduled jobs.
+**The core loop works end to end.** A real account can sign up, be taken through
+onboarding, land on the voting screen, and judge blind pairs — with identities revealed
+only after each vote. 20 tables and 1 view live on Neon, a token-driven component library
+at `/design-system`, the weekly drop with its screens and scheduled jobs, and the voting
+surface the whole product is built around.
 
-The **voting surface itself is still a placeholder** — that is Prompt 5, and it is next.
-
-`npm run build`, `npm run check` and `npm run test:e2e` all pass: 240 unit and integration
-tests, 61 Playwright tests (7 visual-regression baselines, mobile only). The build
+`npm run build`, `npm run check` and `npm run test:e2e` all pass: 259 unit and integration
+tests, 73 Playwright tests (7 visual-regression baselines, mobile only). The build
 succeeds with **no environment variables set**.
 
 What exists, on top of the Prompt 0 scaffold:
@@ -58,38 +57,44 @@ _The weekly drop (Prompt 4)_
 - `inngest/` — `drop-lifecycle` (15-minute sweep) and `drop-guard` (daily missed-drop
   warning), plus the typed event vocabulary later prompts subscribe to.
 
-Still absent: the voting surface, Mux, Upstash, and any rating maths (`ratings` rows are
-seeded, not computed).
+_Blind pairwise voting (Prompt 5)_
 
-**The stack diverges from the prompt pack** in five recorded places: Neon instead of
+- `lib/domain/pairing.ts` — information gain, view levelling, the cap and its fallbacks.
+  Pure; it is never told who owns an entry, so it could not leak one. 19 tests.
+- `app/vote/` — the voting surface. Two clips, autoplay muted, tap to unmute, one tap to
+  choose, a skip, the scrub-sync, and the reveal.
+- `comparisons` gained `decision_ms`, `both_watched` and `skipped`, with one CHECK
+  covering the three legal shapes of a comparison.
+
+Still absent: entering (Prompt 6 unlocks it, Prompt 8 builds the upload), Mux, Upstash,
+and any rating maths (`ratings` rows are seeded, not computed).
+
+**The stack diverges from the prompt pack** in six recorded places: Neon instead of
 Supabase (ADR 0002 — read it before writing a query), two entry tables instead of one
 (ADR 0004), tokens in TypeScript with generated CSS (ADR 0005), email OTP instead of a
-magic link (ADR 0006), and a derived rather than stored drop phase (ADR 0007).
+magic link (ADR 0006), a derived rather than stored drop phase (ADR 0007), and the vote
+returning its own next pair (ADR 0008).
 
 ## Next step
 
-Run **Prompt 5 — Blind pairwise voting** from `/docs/arena-prompt-pack-FINAL.md`.
+Run **Prompt 6 — The compete unlock** from `/docs/arena-prompt-pack-FINAL.md`.
 
-The pack calls it "the most important surface in the app", and everything it needs now
-exists. Five things in this repo are waiting for it:
+Most of the machinery already exists, which makes this prompt mostly about the moment
+rather than the mechanism:
 
-- **`/vote` is a placeholder** that says so on the page. Prompt 5 replaces it wholesale.
-- **The data layer is ready.** `nextBlindPair`, `recordVote` and `revealComparison` are
-  written and tested; `nextBlindPair` reads `set_piece_entry_blind`, which has no `user_id`
-  column at all. Pairing is uniform-random on purpose — rating-aware pairing is Prompt 10.
-- **The components exist.** `RevealCard` (380ms spring flip), `VideoTile` (no identity prop,
-  and must never get one), `ProgressRing` for the unlock counter, `Sheet` for explanations.
-- **The seed has 120 eligible entries and 800 comparisons** across three briefs, so the
-  screen is buildable without the upload pipeline.
-- **Two signature moments are deliberately unbuilt and belong here**: the scrub-sync
-  compare (both clips scrubbed to the same timestamp — no other platform can offer it
-  because no other platform has everyone performing the same brief), and sound on the
-  reveal. Both were deferred from Prompt 2 with that reasoning written down.
+- **`profiles.compete_unlocked_at` is set by `countComparisonAndMaybeUnlock`**, which runs
+  inside `recordVote` — so the unlock already happens at `UNLOCK_THRESHOLD` judged
+  comparisons, and skips already do not count toward it.
+- **`submitVote` already returns `justUnlocked`**, and the voting surface currently ignores
+  it. That flag is the hook for the celebration moment.
+- **`ProgressRing` is built and in use** on `/vote`, showing progress to the threshold.
+- **`createSetPieceEntry` already refuses** an account without `competeUnlockedAt`, with a
+  refusal test — so the gate is enforced in the data layer, not just the UI.
 
-One caution: `recordVote` is two statements rather than one transaction, because Neon's
-HTTP driver has no interactive transactions. A crash between them costs a user one
-comparison of unlock progress. Prompt 14 moves vote integrity onto the pooled WebSocket
-driver; do not paper over it in Prompt 5.
+What is missing is the ceremony and what comes after it: there is no entry flow, and there
+is nothing that tells a judge they have earned one. Note that entering also needs the
+upload pipeline (Prompt 8), so Prompt 6 should build the unlock moment and the eligibility
+to enter — not the entry form.
 
 ## Open questions
 
@@ -139,6 +144,88 @@ driver; do not paper over it in Prompt 5.
    a `test:integration` script rather than deleting the coverage.
 
 ## Completed
+
+### Prompt 5 — Blind pairwise voting — 2026-08-23
+
+**Files created/changed**
+
+- `lib/domain/pairing.ts` — **new.** Information gain, view levelling, the cap and its
+  fallbacks, random presentation order. Pure. `tests/unit/pairing.test.ts`, 19 tests.
+- `lib/db/queries/comparisons.ts` — rewritten. `nextBlindPair` now applies every exclusion
+  the pack asks for; `recordVote` handles skips and records the vote-quality signals.
+- `lib/db/schema.ts` + `drizzle/0003_little_thunderbolts.sql` — `decision_ms`,
+  `both_watched`, `skipped`, and one CHECK covering the three legal shapes of a comparison.
+- `app/vote/page.tsx`, `actions.ts`, `vote-surface.tsx` — **new.** The voting screen.
+- `components/ui/video-tile.tsx` — autoplay, controlled mute, and an imperative handle so
+  the scrub-sync can drive both clips. Still no identity prop, and must never get one.
+- `tests/e2e/vote.spec.ts` — **new.** Six tests including the full 10-pair run.
+- `docs/decisions/0008-pairing-and-the-vote-round-trip.md` — **new ADR.**
+
+**Decisions made**
+
+1. **Pairing is a pure function that is never told who owns an entry.** The data layer
+   excludes (own entry, division-mates, seen pairs) before anything reaches it, so Core
+   rule 3 holds by construction rather than by care. It also makes the interesting half
+   testable without a database.
+
+2. **View levelling is weighted to beat information gain** (×1.4). An unseen entry with a
+   slightly worse rating match wins against a perfectly matched pair served a hundred
+   times, because otherwise "guaranteed attention" is a sentence rather than a promise.
+   There is a test asserting exactly that.
+
+3. **The vote returns its own next pair.** Prefetching with a separate action was built
+   first and was wrong: Next serialises server actions, so a prefetch in flight delays the
+   vote behind it — and it got worse the faster somebody voted. ADR 0008.
+
+4. **Skips are recorded and never counted.** "I cannot tell these apart" is information
+   about the pairing, and discarding it would flatter the algorithm. It does not reach a
+   rating (`is_counted` false with a reason) and does not advance the compete-unlock —
+   otherwise the fastest route to entering would be tapping skip twenty-five times.
+
+5. **"Direct rivals" is read as division-mates.** In this schema a division is the rivalry
+   unit. If rivalries become first-class in Prompt 17, this needs revisiting rather than
+   assuming it is still covered.
+
+6. **Tapping a clip unmutes; choosing is a separate button.** Not only because nesting the
+   two was invalid HTML (below) — a judge reaching for sound should not cast a vote.
+
+**Four bugs found by running it**
+
+- **`VideoTile` wrapped in a "choose" button** — a button inside a button. React reported
+  it as a hydration mismatch and recovered by regenerating the tree, wiping the vote in
+  progress. Also a genuine accessibility fault.
+- **`decisionMs` was unbounded.** Before the timing effect runs, `Date.now() - 0` is ~1.7e12,
+  past Postgres `integer`, so the write 500s. Now clamped to ten minutes.
+- **The view count was a correlated subquery per candidate**, scanning the comparisons
+  table once per entry on the brief. Now one indexed read, tallied in TypeScript.
+- **The 10-pair test was not hanging.** Ten real votes at ~3s each outlast Playwright's
+  30-second default. The error said "Test timeout of 30000ms exceeded" from the first run
+  and I read past it repeatedly. A timeout message means the timeout, not the assertion
+  inside it.
+
+**Deferred / known gaps**
+
+- **No sound on the reveal.** Deferred from Prompt 2 and still deferred: it needs an
+  autoplay-policy and mute-preference story, and a judge on a bus should not be ambushed.
+- **A vote is ~1.5s** — around eight sequential queries on Neon's HTTP driver. The reveal
+  and the next draw are parallelised; the recording path is still serial and wants the
+  pooled WebSocket driver plus a transaction, which Prompt 14 needs anyway.
+- **`recordVote` is still two statements, not one transaction.** Unchanged from Prompt 1.
+- **`nextBlindPair` writes a row every call**, so an abandoned session leaves comparisons
+  shown and never decided. Harmless, and useful as a view count, but not free.
+- **Pairing is O(n²)** over a brief's candidates. Fine at a few hundred pairs; a brief with
+  thousands of entries wants a rating-bucketed shortlist.
+- **`justUnlocked` is returned and ignored.** It is the hook for Prompt 6's moment.
+- **`bothWatched` uses a 35% threshold** picked by judgement, not evidence. It is not in
+  `hypotheses.ts` because nothing reads it yet; when Prompt 14 does, it should move there.
+
+**How to verify it works**
+
+```bash
+npm run check                                  # 259 tests
+npx playwright test tests/e2e/vote.spec.ts     # the 10-pair run
+npm run dev                                    # sign in, then /vote
+```
 
 ### Prompt 4 — The weekly drop (set piece lifecycle) — 2026-08-22
 
