@@ -18,6 +18,14 @@ export type UserActor = {
    * or exposes personal data must branch on this rather than hoping it never comes up.
    */
   isMinor: boolean;
+  /**
+   * Runs the drops: writes briefs, licenses tracks, publishes.
+   *
+   * Deliberately NOT the same thing as a `system` actor. The system acts with no human
+   * behind it and states a reason for the audit log; an admin is a person, and a person
+   * publishing an unlicensed brief is somebody we need to be able to name afterwards.
+   */
+  isAdmin: boolean;
 };
 
 /** Nobody is signed in. Public reads only, and never anything personal. */
@@ -61,6 +69,19 @@ export function requireUser(actor: Actor, what: string): UserActor {
     throw new ForbiddenError(`${what} requires a signed-in user`);
   }
   return actor;
+}
+
+/**
+ * Assert the actor may run the drops.
+ *
+ * Accepts the system too, because scheduled lifecycle jobs move the same rows an admin
+ * does. What it does not accept is an ordinary signed-in user, however the request got
+ * here — a hidden nav link is not a permission.
+ */
+export function requireAdmin(actor: Actor, what: string): void {
+  if (isSystem(actor)) return;
+  if (isUser(actor) && actor.isAdmin) return;
+  throw new ForbiddenError(`${what} requires an administrator`);
 }
 
 /** Assert the actor is the named user, or the system. Ownership checks go through this. */

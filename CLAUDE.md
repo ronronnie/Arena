@@ -153,6 +153,8 @@ cookie signed with our own `NEON_AUTH_COOKIE_SECRET`.
   /ui                   Small UI helpers (cn).
 proxy.ts                Route protection. Next 16's name for middleware — not `middleware.ts`.
 /inngest                Background and scheduled functions.
+  client.ts             The Inngest client and the typed event vocabulary.
+  /functions            One file per scheduled job.
 /drizzle                Generated migrations. Do not hand-edit.
 /scripts                seed.ts, migrate.ts, build-tokens.ts, make-fixtures.sh.
 /tests
@@ -256,7 +258,7 @@ value **and** write an ADR recording what was learned.
 | **Actor**             | Who a query runs on behalf of: a user, an anonymous visitor, or the system. Every data-access function takes one.                                                       |
 | **Hypothesis**        | A tunable number in `lib/config/hypotheses.ts` that is a guess, not a finding.                                                                                          |
 | **Track**             | The licensed music a set piece is performed to. Carries its own licence window, territory and contract reference.                                                       |
-| **Licence window**    | The period a track is cleared for. A brief cannot publish unless its track's window covers the whole drop, `opens_at` to `judging_ends_at`. Enforced by a trigger.      |
+| **Licence window**    | The period a track is cleared for. A brief cannot publish unless its window covers the whole drop. Enforced by a trigger; surfaced in the admin catalogue by expiry.    |
 | **Blind view**        | `set_piece_entry_blind` — the identity-free view the voting surface reads. Has no `user_id` column at all. Core rule 3 as a database object, not a select-list habit.   |
 | **Reveal**            | The state change after a vote is recorded, when a competitor's identity becomes readable. Only ever through `revealComparison`, and only for the voter who decided it.  |
 | **Fixture clip**      | A committed stand-in video under `public/fixtures/`. Generated, not sourced, so there is no licence to honour. How the voting surface gets built before Mux exists.     |
@@ -268,6 +270,9 @@ value **and** write an ADR recording what was learned.
 | **Minor policy**      | The permission set for an age band — contact, public location, leaderboard, notifications. Import it; never re-derive an age check anywhere else.                       |
 | **Sub-style**         | A child category (`categories.parent_id`), e.g. Abhinaya under Bharatanatyam. Onboarding stores the most specific one; drops and accent ramps hang off its discipline.  |
 | **Vote weight**       | How much one judge's comparison counts. Phone verification raises it, judge calibration scales it, and it is stamped on the comparison when the vote is cast.           |
+| **Phase**             | What is happening in a drop right now — `upcoming`, `open`, `judging`, `results` — DERIVED from the clock by `lib/domain/dropLifecycle.ts`, never stored. See ADR 0007. |
+| **Status**            | The stored `set_pieces.status` column: what an admin or a job decided. Not the same as phase, and only ever shown on admin screens.                                     |
+| **Drop guard**        | The daily job that warns when an active category has no published brief within 72 hours of needing one. A missed drop breaks the ritual.                                |
 
 <!-- BEGIN:nextjs-agent-rules -->
 

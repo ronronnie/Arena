@@ -46,6 +46,18 @@ import {
   listMySetPieceEntries,
   setSetPieceEntryStatus,
 } from '@/lib/db/queries/entries';
+import {
+  createSetPiece,
+  createTrack,
+  listSetPiecesForAdmin,
+  listTracks,
+  publishSetPieceAsAdmin,
+} from '@/lib/db/queries/admin';
+import {
+  advanceSetPieceStatus,
+  countEligibleEntries,
+  listLifecycleCandidates,
+} from '@/lib/db/queries/drops';
 import { follow, isFollowing, listMyFollowing } from '@/lib/db/queries/follows';
 import {
   completeOnboarding,
@@ -64,8 +76,14 @@ const alice: UserActor = {
   kind: 'user',
   id: 'aaaaaaaa-0000-0000-0000-000000000001',
   isMinor: false,
+  isAdmin: false,
 };
-const bob: UserActor = { kind: 'user', id: 'bbbbbbbb-0000-0000-0000-000000000002', isMinor: true };
+const bob: UserActor = {
+  kind: 'user',
+  id: 'bbbbbbbb-0000-0000-0000-000000000002',
+  isMinor: true,
+  isAdmin: false,
+};
 
 beforeEach(() => {
   touchedDatabase = false;
@@ -211,6 +229,102 @@ describe('entries — two lanes (Core rule 1)', () => {
 
   it('refuses a user changing entry status — that is the eligibility engine’s job', async () => {
     await expectRefusal(() => setSetPieceEntryStatus(alice, { entryId: 'e1', status: 'eligible' }));
+  });
+});
+
+describe('admin — running the drops', () => {
+  const admin: UserActor = {
+    kind: 'user',
+    id: 'cccccccc-0000-0000-0000-000000000003',
+    isMinor: false,
+    isAdmin: true,
+  };
+
+  it('refuses an ordinary user reading the licence catalogue', async () => {
+    await expectRefusal(() => listTracks(alice));
+  });
+
+  it('refuses an ordinary user reading unpublished briefs', async () => {
+    // Drafts are next week's brief. Leaking one spoils the drop for everybody.
+    await expectRefusal(() => listSetPiecesForAdmin(alice));
+  });
+
+  it('refuses an ordinary user publishing a brief', async () => {
+    await expectRefusal(() => publishSetPieceAsAdmin(alice, 'sp-1'));
+  });
+
+  it('refuses an ordinary user licensing a track', async () => {
+    await expectRefusal(() =>
+      createTrack(alice, {
+        title: 'T',
+        artist: 'A',
+        licensor: 'L',
+        licenseType: 'direct',
+        licenseStartsAt: new Date(),
+        licenseExpiresAt: new Date(),
+        territory: ['WORLD'],
+        usageTerms: 'none',
+      }),
+    );
+  });
+
+  it('refuses an anonymous visitor everything', async () => {
+    await expectRefusal(() => listTracks(anonymous()));
+    await expectRefusal(() => listSetPiecesForAdmin(anonymous()));
+  });
+
+  it('refuses a brief whose entries close before it opens', async () => {
+    await expectRefusal(() =>
+      createSetPiece(admin, {
+        seasonId: 's1',
+        categoryId: 'c1',
+        weekNo: 1,
+        title: 'Backwards',
+        briefText: 'x',
+        requirements: {},
+        trackId: null,
+        opensAt: new Date('2026-09-10T00:00:00Z'),
+        submitBy: new Date('2026-09-01T00:00:00Z'),
+        judgingEndsAt: new Date('2026-09-20T00:00:00Z'),
+      }),
+    );
+  });
+
+  it('lets an admin through to the query', async () => {
+    // Not refused, so it reaches the exploding stub instead of a ForbiddenError.
+    await expect(listSetPiecesForAdmin(admin)).rejects.toThrow(/database was queried/);
+    expect(touchedDatabase).toBe(true);
+  });
+
+  it('lets the system through — scheduled jobs move the same rows', async () => {
+    await expect(listTracks(system('licence expiry sweep'))).rejects.toThrow(
+      /database was queried/,
+    );
+  });
+});
+
+describe('the lifecycle queue — scheduled jobs only', () => {
+  it('refuses an admin, not just an ordinary user', async () => {
+    /*
+     * Deliberately narrower than `requireAdmin`. These move briefs between statuses on a
+     * schedule; a person doing it by hand from a browser would race the sweep.
+     */
+    const admin: UserActor = {
+      kind: 'user',
+      id: 'cccccccc-0000-0000-0000-000000000003',
+      isMinor: false,
+      isAdmin: true,
+    };
+
+    await expectRefusal(() => listLifecycleCandidates(admin));
+    await expectRefusal(() =>
+      advanceSetPieceStatus(admin, { setPieceId: 'sp-1', from: 'published', to: 'closed' }),
+    );
+    await expectRefusal(() => countEligibleEntries(admin, 'sp-1'));
+  });
+
+  it('refuses an anonymous visitor', async () => {
+    await expectRefusal(() => listLifecycleCandidates(anonymous()));
   });
 });
 

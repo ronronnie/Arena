@@ -17,7 +17,40 @@ export async function currentActor(): Promise<Actor> {
   const user = data?.user;
   if (!user) return anonymous();
 
-  return { kind: 'user', id: user.id, isMinor: await resolveIsMinor(user.id) };
+  return {
+    kind: 'user',
+    id: user.id,
+    isMinor: await resolveIsMinor(user.id),
+    isAdmin: isAdminIdentity(user),
+  };
+}
+
+/**
+ * Who may run the drops.
+ *
+ * Two sources, and the second is a bootstrap. Neon Auth's Better Auth instance has a
+ * `role` column on `neon_auth.user` — but nothing in Arena can write to it yet, and a
+ * product where nobody can publish the first brief is not a product. So an email
+ * allowlist in `ARENA_ADMIN_EMAILS` also grants it.
+ *
+ * The allowlist is deliberately an environment variable rather than a database flag:
+ * changing who is an administrator should require a deploy, not a row update, until there
+ * is an audited way to grant it. Prompt 15 builds the moderation console and should
+ * replace this with something reviewable.
+ */
+function isAdminIdentity(user: {
+  email?: string | null | undefined;
+  role?: string | null | undefined;
+}): boolean {
+  if (user.role === 'admin') return true;
+
+  const allowlist = (process.env.ARENA_ADMIN_EMAILS ?? '')
+    .split(',')
+    .map((entry) => entry.trim().toLowerCase())
+    .filter((entry) => entry !== '');
+
+  const email = user.email?.toLowerCase();
+  return email !== undefined && email !== null && allowlist.includes(email);
 }
 
 /**

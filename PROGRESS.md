@@ -2,16 +2,15 @@
 
 ## Current state
 
-**Data model, design language, and auth all exist.** 20 tables and 1 view live on Neon, a
-data-access layer over them, a seed that produces a judgeable drop, a token-driven
-component library at `/design-system`, and a working sign-in and onboarding flow. A real
-account can now be created, taken through onboarding, and land on `/vote`.
+**Data model, design language, auth and the weekly drop all exist.** 20 tables and 1 view
+live on Neon, a data-access layer over them, a seed that produces a judgeable drop, a
+token-driven component library at `/design-system`, a working sign-in and onboarding flow,
+and the drop lifecycle with its screens and scheduled jobs.
 
-The **voting surface itself is still a placeholder** — that is Prompt 5, and the drop
-lifecycle it depends on is Prompt 4.
+The **voting surface itself is still a placeholder** — that is Prompt 5, and it is next.
 
-`npm run build`, `npm run check` and `npm run test:e2e` all pass: 196 unit and integration
-tests, 41 Playwright tests (7 visual-regression baselines, mobile only). The build
+`npm run build`, `npm run check` and `npm run test:e2e` all pass: 240 unit and integration
+tests, 61 Playwright tests (7 visual-regression baselines, mobile only). The build
 succeeds with **no environment variables set**.
 
 What exists, on top of the Prompt 0 scaffold:
@@ -47,32 +46,50 @@ _Auth and onboarding (Prompt 3)_
   straight to `/vote`.
 - `proxy.ts` — route protection. Next 16's name for middleware.
 
-Still absent: the voting surface, the drop lifecycle, Mux, Inngest, Upstash, and any
-rating maths (`ratings` rows are seeded, not computed).
+_The weekly drop (Prompt 4)_
 
-**The stack diverges from the prompt pack** in four recorded places: Neon instead of
+- `lib/domain/dropLifecycle.ts` — phase, countdown wording, transitions. Pure, 34 tests.
+  Phase is DERIVED from the clock, never stored, so a job that fails cannot make a screen
+  lie about whether entries are open (ADR 0007).
+- `/drop` and `/drop/archive` — the brief, its requirements as a checklist, a countdown,
+  the entry count, and one call to action per phase. Readable signed out.
+- `/admin/set-pieces` and `/admin/tracks` — the only screens where drafts are visible, and
+  the licence catalogue sorted by expiry.
+- `inngest/` — `drop-lifecycle` (15-minute sweep) and `drop-guard` (daily missed-drop
+  warning), plus the typed event vocabulary later prompts subscribe to.
+
+Still absent: the voting surface, Mux, Upstash, and any rating maths (`ratings` rows are
+seeded, not computed).
+
+**The stack diverges from the prompt pack** in five recorded places: Neon instead of
 Supabase (ADR 0002 — read it before writing a query), two entry tables instead of one
-(ADR 0004), tokens in TypeScript with generated CSS (ADR 0005), and email OTP instead of a
-magic link (ADR 0006).
+(ADR 0004), tokens in TypeScript with generated CSS (ADR 0005), email OTP instead of a
+magic link (ADR 0006), and a derived rather than stored drop phase (ADR 0007).
 
 ## Next step
 
-Run **Prompt 4 — The weekly drop (set piece lifecycle)** from
-`/docs/arena-prompt-pack-FINAL.md`.
+Run **Prompt 5 — Blind pairwise voting** from `/docs/arena-prompt-pack-FINAL.md`.
 
-It is the last thing standing between the current state and the voting screen in Prompt 5.
-Four things in this repo are waiting for it:
+The pack calls it "the most important surface in the app", and everything it needs now
+exists. Five things in this repo are waiting for it:
 
-- **Inngest is not installed.** Prompt 4 owns the scheduled functions that move a drop
-  through its states. `inngest/README.md` records which function belongs to which prompt.
-- **`publishSetPiece` exists and is system-only**, and the licence trigger already refuses
-  to publish a brief whose track licence does not cover the whole drop. The scheduled job
-  calls that function; it does not need to re-check the licence.
-- **`set_pieces.status` has the full lifecycle** — `draft`, `scheduled`, `published`,
-  `closed`, `archived` — but nothing transitions between them yet. The seed writes
-  `published` directly.
-- **`/vote` is a placeholder** and says so on the page. Prompt 5 replaces it; Prompt 4
-  should not build the voting UI, only the lifecycle underneath it.
+- **`/vote` is a placeholder** that says so on the page. Prompt 5 replaces it wholesale.
+- **The data layer is ready.** `nextBlindPair`, `recordVote` and `revealComparison` are
+  written and tested; `nextBlindPair` reads `set_piece_entry_blind`, which has no `user_id`
+  column at all. Pairing is uniform-random on purpose — rating-aware pairing is Prompt 10.
+- **The components exist.** `RevealCard` (380ms spring flip), `VideoTile` (no identity prop,
+  and must never get one), `ProgressRing` for the unlock counter, `Sheet` for explanations.
+- **The seed has 120 eligible entries and 800 comparisons** across three briefs, so the
+  screen is buildable without the upload pipeline.
+- **Two signature moments are deliberately unbuilt and belong here**: the scrub-sync
+  compare (both clips scrubbed to the same timestamp — no other platform can offer it
+  because no other platform has everyone performing the same brief), and sound on the
+  reveal. Both were deferred from Prompt 2 with that reasoning written down.
+
+One caution: `recordVote` is two statements rather than one transaction, because Neon's
+HTTP driver has no interactive transactions. A crash between them costs a user one
+comparison of unlock progress. Prompt 14 moves vote integrity onto the pooled WebSocket
+driver; do not paper over it in Prompt 5.
 
 ## Open questions
 
@@ -122,6 +139,123 @@ Four things in this repo are waiting for it:
    a `test:integration` script rather than deleting the coverage.
 
 ## Completed
+
+### Prompt 4 — The weekly drop (set piece lifecycle) — 2026-08-22
+
+**Files created/changed**
+
+_Lifecycle_
+
+- `lib/domain/dropLifecycle.ts` — **new.** Phase, countdown wording, window progress,
+  `nextTransition`, the missed-drop rule. Pure and framework-free.
+- `tests/unit/drop-lifecycle.test.ts` — **new.** 34 tests, mostly boundaries.
+
+_Data access_
+
+- `lib/db/queries/drops.ts` — **new.** `getCurrentDrop`, `getUpcomingDrop`, `listPastDrops`,
+  `getDrop`, `listActiveCategories`, plus three system-only functions for the sweep.
+- `lib/db/queries/admin.ts` — **new.** Track catalogue with expiry, `listTracksCovering`,
+  `createTrack`, `createSetPiece`, `publishSetPieceAsAdmin`, `unpublishSetPiece`.
+- `lib/db/actor.ts` — `isAdmin` on `UserActor`, and `requireAdmin`.
+- `lib/auth/actor.ts` — resolves `isAdmin` from `neon_auth.user.role` or `ARENA_ADMIN_EMAILS`.
+
+_Scheduled work_
+
+- `inngest/client.ts` — **new.** Client plus four typed events.
+- `inngest/functions/drop-lifecycle.ts`, `drop-guard.ts` — **new.**
+- `inngest/revive.ts` — **new.** Turns JSON-serialised step results back into `Date`s.
+- `app/api/inngest/route.ts` — **new.**
+
+_Screens_
+
+- `app/drop/page.tsx`, `app/drop/archive/page.tsx` — **new.**
+- `app/admin/layout.tsx`, `app/admin/set-pieces/*`, `app/admin/tracks/page.tsx` — **new.**
+- `proxy.ts` — `/admin` added to the matcher.
+
+_Tests and docs_
+
+- `tests/e2e/drop.spec.ts` — **new.** 10 tests.
+- `tests/unit/dal-authorization.test.ts` — 10 more refusals, including admin and the
+  narrower system-only lifecycle queue.
+- `docs/decisions/0007-derived-drop-phase.md` — **new ADR.**
+- `.env.example`, `inngest/README.md`, `CLAUDE.md` glossary.
+
+**Decisions made**
+
+1. **Phase is derived from the clock; `status` is what somebody decided.** If the phase
+   were a stored column, an hour of Inngest downtime would have the product telling a
+   competitor entries are open ninety minutes after the deadline — they record, they
+   submit, and an eligibility check rejects them for missing a deadline the app hid. ADR 0007.
+
+2. **A 15-minute sweep, not a timer per drop.** A per-drop timer has to be created on
+   publish, moved when a date is edited, and cancelled on unpublish; every one of those
+   failing is silent. A sweep re-derives from the rows each time.
+
+3. **`nextTransition` returns one step or null**, never a target state. That is what makes
+   the sweep idempotent — a second run finds nothing, and it cannot overwrite a row an
+   admin just archived by hand.
+
+4. **The guard runs daily, not weekly.** The pack says weekly; a weekly check that happens
+   to run three hours after the 72-hour mark has missed the thing it exists to catch, and
+   one failed run leaves a fortnight uncovered.
+
+5. **Only a PUBLISHED brief counts as covering a slot.** A draft sitting in the admin
+   screen is precisely the situation the alert exists to catch — someone wrote it and did
+   not press publish, possibly because the licence check is blocking them.
+
+6. **`requireAdmin` accepts the system; the lifecycle queue does not.** Three functions
+   (`listLifecycleCandidates`, `advanceSetPieceStatus`, `countEligibleEntries`) refuse even
+   an admin: moving briefs between statuses by hand from a browser would race the sweep.
+
+7. **Admin is an env allowlist plus `neon_auth.user.role`.** Nothing in Arena can write
+   that column yet, and a product where nobody can publish the first brief is not a
+   product. Deliberately an env var — changing who is an administrator should need a
+   deploy until Prompt 15 builds something auditable.
+
+8. **A live brief cannot be unpublished.** Withdrawing something people are already
+   performing is breaking a promise, not an editorial decision. If one genuinely must come
+   down, that is a moderation action with an audit trail (Prompt 15).
+
+**Two bugs found by looking at the running app**
+
+- **A licence expiring in 2027 rendered as "22 Aug"** — indistinguishable from today, on
+  the one screen whose entire job is telling an administrator when a licence runs out.
+  Licence dates now always carry the year.
+- **`step.run()` results come back through JSON**, so `Date`s arrive as ISO strings.
+  TypeScript caught it (`JsonifyObject<…>`) before it became `dropPhase()` comparing a
+  string to a number. `inngest/revive.ts` converts at that boundary.
+
+**Deferred / known gaps**
+
+- **No authoring form for briefs.** A brief needs a tutorial video, and the Mux upload
+  pipeline is Prompt 8 — building half of it here means rebuilding it there. Briefs are
+  created by seed or migration and published from `/admin/set-pieces`, which does have the
+  licence gating the pack asks for. `createSetPiece` exists and is tested.
+- **No form for licensing a track.** `createTrack` exists in the data-access layer. A
+  licence is a contract, and the screen should arrive with whoever will be doing the
+  licensing.
+- **The archive does not name winners.** Ratings are seeded, not computed, so there is no
+  honest winner to show until Prompt 10. The page says so rather than inventing one.
+- **Nothing consumes the events yet.** `drop/opened` and the rest are emitted and typed;
+  notifications are Prompt 18 and rating recomputation is Prompt 10.
+- **`drop/missing.warning` does not page anybody.** It is an event with no subscriber, so
+  the alert the pack describes as "must page you" currently reaches an Inngest dashboard
+  and no further.
+- **No admin e2e coverage.** Verified against the live database instead, the same way the
+  signed-in onboarding flow was.
+
+**How to verify it works**
+
+```bash
+npm run check                  # 240 tests
+npm run test:e2e               # 61 tests
+npm run dev                    # /drop shows week 3 open, with a countdown
+npx inngest-cli@latest dev     # optional: the crons need a dev server to fire
+```
+
+To see the admin screens, set `ARENA_ADMIN_EMAILS` to your address in `.env.local` and
+**sign in again** — Neon Auth caches session data in the cookie, so a role or allowlist
+change does not take effect on an existing session.
 
 ### Prompt 3 — Auth and audience-first onboarding — 2026-08-22
 

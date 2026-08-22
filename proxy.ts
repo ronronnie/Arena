@@ -52,5 +52,5 @@ export const config = {
    * readable signed-out on purpose. Core rule 4 is audience-first, and an audience product
    * that demands an account before showing anything has the funnel backwards.
    */
-  matcher: ['/onboarding/:path*', '/vote/:path*', '/settings/:path*'],
+  matcher: ['/onboarding/:path*', '/vote/:path*', '/settings/:path*', '/admin/:path*'],
 };

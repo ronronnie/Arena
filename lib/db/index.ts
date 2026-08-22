@@ -19,10 +19,37 @@ export {
   anonymous,
   isSystem,
   isUser,
+  requireAdmin,
   requireSelfOrSystem,
   requireUser,
   system,
 } from './actor';
+
+/* The weekly drop — the ritual the product runs on. */
+export type { Drop, DropRequirements, LifecycleCandidate } from './queries/drops';
+export {
+  advanceSetPieceStatus,
+  countEligibleEntries,
+  getCurrentDrop,
+  getDrop,
+  getUpcomingDrop,
+  listActiveCategories,
+  listLifecycleCandidates,
+  listPastDrops,
+} from './queries/drops';
+
+/* Admin: authoring briefs, licensing tracks. */
+export type { AdminSetPiece, TrackSummary } from './queries/admin';
+export {
+  LICENCE_WARNING_DAYS,
+  createSetPiece,
+  createTrack,
+  listSetPiecesForAdmin,
+  listTracks,
+  listTracksCovering,
+  publishSetPieceAsAdmin,
+  unpublishSetPiece,
+} from './queries/admin';
 
 export type {
   BlindEntry,
