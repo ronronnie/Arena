@@ -47,7 +47,16 @@ import {
   setSetPieceEntryStatus,
 } from '@/lib/db/queries/entries';
 import { follow, isFollowing, listMyFollowing } from '@/lib/db/queries/follows';
-import { getMyProfile, getProfile } from '@/lib/db/queries/profiles';
+import {
+  completeOnboarding,
+  getMyProfile,
+  getOnboardingState,
+  getProfile,
+  isHandleAvailable,
+  setPhoneVerified,
+  setPrimaryCategory,
+  startOnboarding,
+} from '@/lib/db/queries/profiles';
 import { getMyRating } from '@/lib/db/queries/ratings';
 import { publishSetPiece } from '@/lib/db/queries/setPieces';
 
@@ -87,6 +96,77 @@ describe('profiles — personal data (Core rule 7)', () => {
       /database was queried/,
     );
     expect(touchedDatabase).toBe(true);
+  });
+});
+
+describe('onboarding — Core rules 4 and 7', () => {
+  const adultDob = '1995-04-01';
+
+  it('refuses starting onboarding for somebody else', async () => {
+    await expectRefusal(() => startOnboarding(alice, { userId: bob.id, dob: adultDob }));
+  });
+
+  it('refuses an anonymous visitor starting onboarding', async () => {
+    await expectRefusal(() => startOnboarding(anonymous(), { userId: bob.id, dob: adultDob }));
+  });
+
+  it('refuses an under-age date of birth BEFORE touching the database', async () => {
+    /*
+     * The age gate is an authorization outcome, not a validation message, and it has to
+     * fire before any write. A blocked signup must leave no profile row and no stored
+     * date of birth for a child we have just told we cannot serve.
+     */
+    const twelveYearsAgo = new Date();
+    twelveYearsAgo.setFullYear(twelveYearsAgo.getFullYear() - 12);
+    const dob = twelveYearsAgo.toISOString().slice(0, 10);
+
+    await expectRefusal(() => startOnboarding(alice, { userId: alice.id, dob }));
+  });
+
+  it('refuses a date of birth in the future', async () => {
+    await expectRefusal(() => startOnboarding(alice, { userId: alice.id, dob: '2035-01-01' }));
+  });
+
+  it('refuses choosing a category for somebody else', async () => {
+    await expectRefusal(() => setPrimaryCategory(alice, { userId: bob.id, categoryId: 'c1' }));
+  });
+
+  it('refuses completing onboarding for somebody else', async () => {
+    await expectRefusal(() =>
+      completeOnboarding(alice, { userId: bob.id, handle: 'someone', displayName: 'Someone' }),
+    );
+  });
+
+  it('refuses an invalid handle before touching the database', async () => {
+    await expectRefusal(() =>
+      completeOnboarding(alice, { userId: alice.id, handle: 'no spaces', displayName: 'A' }),
+    );
+  });
+
+  it('refuses a reserved handle', async () => {
+    await expectRefusal(() =>
+      completeOnboarding(alice, { userId: alice.id, handle: 'admin', displayName: 'A' }),
+    );
+  });
+
+  it('refuses an empty display name', async () => {
+    await expectRefusal(() =>
+      completeOnboarding(alice, { userId: alice.id, handle: 'valid_handle', displayName: '   ' }),
+    );
+  });
+
+  it('refuses an anonymous visitor reading onboarding state', async () => {
+    await expectRefusal(() => getOnboardingState(anonymous()));
+  });
+
+  it('refuses an anonymous visitor checking handle availability', async () => {
+    await expectRefusal(() => isHandleAvailable(anonymous(), 'meera'));
+  });
+
+  it('refuses marking somebody else’s phone as verified', async () => {
+    // Vote weight follows phone verification, so this is a route to inflating the weight
+    // of an account you control by verifying it as somebody else.
+    await expectRefusal(() => setPhoneVerified(alice, bob.id));
   });
 });
 

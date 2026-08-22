@@ -156,7 +156,26 @@ export const profiles = pgTable(
     city: text('city'),
     /** Core rule 4: everyone signs up as a judge. There is no performer option. */
     isJudge: boolean('is_judge').notNull().default(true),
+    /**
+     * Optional, and the only reason Arena asks for a phone number at all. Raises vote
+     * weight (`lib/domain/voteWeight.ts`) — it never gates access to anything.
+     */
     phoneVerified: boolean('phone_verified').notNull().default(false),
+    /**
+     * The discipline this judge chose during onboarding — the most specific one, so a
+     * sub-style rather than its parent. Drives which drop they are shown and which accent
+     * ramp themes their app. Not a commitment: it does not restrict what they may judge.
+     */
+    primaryCategoryId: uuid('primary_category_id').references(() => categories.id, {
+      onDelete: 'set null',
+    }),
+    /**
+     * Null until the onboarding sequence finishes. Stored rather than derived from "are
+     * all the fields filled in" because the redirect in `proxy.ts` has to answer this on
+     * every request, and a rule spread across four nullable columns is a rule that will
+     * eventually disagree with itself.
+     */
+    onboardingCompletedAt: timestamp('onboarding_completed_at', { withTimezone: true }),
     comparisonsCompleted: integer('comparisons_completed').notNull().default(0),
     /** Null until UNLOCK_THRESHOLD comparisons are judged. The compete-unlock. */
     competeUnlockedAt: timestamp('compete_unlocked_at', { withTimezone: true }),

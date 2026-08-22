@@ -99,6 +99,33 @@ export const PROVISIONAL_RD_THRESHOLD = 80;
 export const MIN_COMPETITORS_TO_SHOW_BOARD = 20;
 
 /**
+ * How much a phone-verified judge's vote counts, relative to an unverified one.
+ *
+ * Based on: nothing but the shape of the incentive. Phone verification is the cheapest
+ * real friction against one person running several accounts, so a verified vote should be
+ * worth more — but the multiplier has to be small enough that an unverified judge's
+ * session still feels worth their time, because most people will never verify.
+ * Would change if: sockpuppet detection (Prompt 14) shows unverified accounts behaving
+ * measurably differently, which would justify widening the gap — or if verification
+ * uptake is so low that the weighted panel is effectively decided by a tiny minority,
+ * which would justify narrowing it. Watch verification rate against vote-integrity flags.
+ */
+export const PHONE_VERIFIED_VOTE_WEIGHT = 1.25;
+
+/**
+ * The youngest age that may hold an account at all.
+ *
+ * Based on: the floor set by COPPA in the US and echoed by most platforms; the launch
+ * market (India) has stricter rules under the DPDP Act that Prompt 19 has to resolve.
+ * This is the one "hypothesis" in this file that is really a legal constraint, and it
+ * lives here so that nothing hardcodes 13. It should only ever move UP.
+ * Would change if: legal advice for the launch market requires a higher floor, or
+ * verifiable parental consent is built (which would be a different product decision, not
+ * a tuning one).
+ */
+export const MIN_SIGNUP_AGE = 13;
+
+/**
  * Every hypothesis in one object, for diagnostics, admin surfaces, and the
  * "why does this number say that?" explanations required by Core rule 6.
  */
@@ -111,6 +138,8 @@ export const HYPOTHESES = {
   MAX_VIEWS_PER_ENTRY,
   PROVISIONAL_RD_THRESHOLD,
   MIN_COMPETITORS_TO_SHOW_BOARD,
+  PHONE_VERIFIED_VOTE_WEIGHT,
+  MIN_SIGNUP_AGE,
 } as const;
 
 export type HypothesisName = keyof typeof HYPOTHESES;

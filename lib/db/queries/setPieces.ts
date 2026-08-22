@@ -60,6 +60,41 @@ export async function listCategories(
     .orderBy(asc(categories.name));
 }
 
+/**
+ * The discipline a drop actually hangs off.
+ *
+ * Onboarding stores the MOST SPECIFIC category a judge picked — "Abhinaya", not
+ * "Bharatanatyam" — because that is what decides who they are shown. But seasons and
+ * briefs are run per discipline, one level up, so looking up a drop by the stored category
+ * finds nothing at all. This resolves a sub-style to its parent and leaves a top-level
+ * category alone.
+ *
+ * Returns the slug as well, because the slug is what `data-category` needs for the accent
+ * ramp — and the ramps are keyed by discipline, not by sub-style.
+ */
+export async function resolveDropCategory(
+  _actor: Actor,
+  categoryId: string,
+): Promise<{ id: string; slug: string } | null> {
+  const rows = await db
+    .select({ id: categories.id, slug: categories.slug, parentId: categories.parentId })
+    .from(categories)
+    .where(eq(categories.id, categoryId))
+    .limit(1);
+
+  const category = rows[0];
+  if (category === undefined) return null;
+  if (category.parentId === null) return { id: category.id, slug: category.slug };
+
+  const parents = await db
+    .select({ id: categories.id, slug: categories.slug })
+    .from(categories)
+    .where(eq(categories.id, category.parentId))
+    .limit(1);
+
+  return parents[0] ?? { id: category.id, slug: category.slug };
+}
+
 /** Public: the current season for a category, if one is running. */
 export async function getCurrentSeason(
   _actor: Actor,

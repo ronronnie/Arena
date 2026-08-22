@@ -141,6 +141,7 @@ cookie signed with our own `NEON_AUTH_COOKIE_SECRET`.
 /lib                    Domain logic. FRAMEWORK-FREE — no React, no Next imports.
   /config               hypotheses.ts and other tunables.
   /design               tokens.ts (source of truth), color.ts (WCAG maths), copy.ts.
+  /policy               minorPolicy.ts — THE age gate. No age check may live anywhere else.
   /domain               Pure business logic: rating, eligibility, divisions, pairing.
   /db                   The ONLY path to the database.
     /queries            One file per aggregate. Every function takes an Actor first.
@@ -150,6 +151,7 @@ cookie signed with our own `NEON_AUTH_COOKIE_SECRET`.
     auth-schema.ts      neon_auth.user, read-only. Kept out of drizzle-kit's sight.
   /auth                 Neon Auth wiring. The one place a session becomes an Actor.
   /ui                   Small UI helpers (cn).
+proxy.ts                Route protection. Next 16's name for middleware — not `middleware.ts`.
 /inngest                Background and scheduled functions.
 /drizzle                Generated migrations. Do not hand-edit.
 /scripts                seed.ts, migrate.ts, build-tokens.ts, make-fixtures.sh.
@@ -262,6 +264,10 @@ value **and** write an ADR recording what was learned.
 | **Accent ramp**       | The five-colour set (`soft`, `text`, `base`, `strong`, `onAccent`) that themes one category. Swapped at the root by `data-category`; defined in `lib/design/tokens.ts`. |
 | **Type scope**        | An element carrying `data-arena-type-scope`, which re-derives the whole type scale from its own `--arena-font-root`. How 150% and 200% dynamic type are rendered.       |
 | **Signature moment**  | One of the four places the product is allowed ceremony: the blind reveal, the scrub-sync compare, the rating tick, and the season result card.                          |
+| **Age band**          | `unknown`, `invalid`, `blocked`, `minor` or `adult`. Produced only by `lib/policy/minorPolicy.ts`, which is the one module allowed to answer an age question.           |
+| **Minor policy**      | The permission set for an age band — contact, public location, leaderboard, notifications. Import it; never re-derive an age check anywhere else.                       |
+| **Sub-style**         | A child category (`categories.parent_id`), e.g. Abhinaya under Bharatanatyam. Onboarding stores the most specific one; drops and accent ramps hang off its discipline.  |
+| **Vote weight**       | How much one judge's comparison counts. Phone verification raises it, judge calibration scales it, and it is stamped on the comparison when the vote is cast.           |
 
 <!-- BEGIN:nextjs-agent-rules -->
 

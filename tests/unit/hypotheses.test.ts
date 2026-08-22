@@ -4,6 +4,8 @@ import {
   HYPOTHESES,
   MAX_VIEWS_PER_ENTRY,
   MIN_COMPETITORS_TO_SHOW_BOARD,
+  MIN_SIGNUP_AGE,
+  PHONE_VERIFIED_VOTE_WEIGHT,
   PROMOTE_COUNT,
   PROVISIONAL_RD_THRESHOLD,
   RELEGATE_COUNT,
@@ -40,6 +42,8 @@ describe('hypotheses', () => {
         'DIVISION_SIZE',
         'MAX_VIEWS_PER_ENTRY',
         'MIN_COMPETITORS_TO_SHOW_BOARD',
+        'MIN_SIGNUP_AGE',
+        'PHONE_VERIFIED_VOTE_WEIGHT',
         'PROMOTE_COUNT',
         'PROVISIONAL_RD_THRESHOLD',
         'RELEGATE_COUNT',
@@ -47,5 +51,17 @@ describe('hypotheses', () => {
         'UNLOCK_THRESHOLD',
       ].sort(),
     );
+  });
+
+  it('keeps the signup age floor at or above 13, and phone weight above 1', () => {
+    // MIN_SIGNUP_AGE is the one entry here that is really a legal constraint rather than a
+    // tuning guess. It lives in this file so nothing hardcodes 13 — but it may only ever
+    // move UP, and a change downward should fail rather than ship.
+    expect(MIN_SIGNUP_AGE).toBeGreaterThanOrEqual(13);
+
+    // A verified vote that counted the same would make verification pointless; one that
+    // counted enormously more would make an unverified judge's session feel worthless.
+    expect(PHONE_VERIFIED_VOTE_WEIGHT).toBeGreaterThan(1);
+    expect(PHONE_VERIFIED_VOTE_WEIGHT).toBeLessThanOrEqual(2);
   });
 });

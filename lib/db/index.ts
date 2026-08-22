@@ -36,15 +36,20 @@ export type {
   VideoSource,
 } from './types';
 
-/* Profiles — Core rules 4 and 7. */
-export type { OwnProfile, PublicProfile } from './queries/profiles';
+/* Profiles and onboarding — Core rules 4 and 7. */
+export type { OnboardingState, OwnProfile, PublicProfile } from './queries/profiles';
 export {
+  completeOnboarding,
   countComparisonAndMaybeUnlock,
-  createProfile,
   getMyProfile,
+  getOnboardingState,
   getProfile,
   getPublicProfile,
   hasCompeteUnlock,
+  isHandleAvailable,
+  setPhoneVerified,
+  setPrimaryCategory,
+  startOnboarding,
 } from './queries/profiles';
 
 /* Briefs, categories, seasons. */
@@ -55,6 +60,7 @@ export {
   listCategories,
   listOpenSetPieces,
   publishSetPiece,
+  resolveDropCategory,
 } from './queries/setPieces';
 
 /* Entries — two lanes, kept apart (Core rule 1). */

@@ -171,6 +171,24 @@ async function main(): Promise<void> {
         throw new Error('Failed to seed categories');
       }
 
+      /*
+       * Sub-styles. Onboarding asks for a discipline and then a style within it, so the
+       * seed needs a real tree rather than two orphan roots — otherwise step 3 of
+       * onboarding has nothing to show and is untestable.
+       */
+      await tx.insert(schema.categories).values([
+        { slug: 'bharatanatyam-nritta', name: 'Nritta (pure dance)', parentId: bharatanatyam.id },
+        {
+          slug: 'bharatanatyam-abhinaya',
+          name: 'Abhinaya (expression)',
+          parentId: bharatanatyam.id,
+        },
+        { slug: 'bharatanatyam-varnam', name: 'Varnam', parentId: bharatanatyam.id },
+        { slug: 'metal-vocals-clean', name: 'Clean vocals', parentId: metalVocals.id },
+        { slug: 'metal-vocals-fry', name: 'Fry scream', parentId: metalVocals.id },
+        { slug: 'metal-vocals-gutturals', name: 'Gutturals', parentId: metalVocals.id },
+      ]);
+
       /* ---------------------------------------------------------------------------
        * Seasons. Exactly one open season — the drop everything else hangs off.
        * ------------------------------------------------------------------------- */
@@ -516,7 +534,7 @@ async function main(): Promise<void> {
       console.log(
         [
           'Seeded:',
-          `  categories        2`,
+          `  categories        2 (+ 6 sub-styles)`,
           `  seasons           2 (1 open)`,
           `  tracks            ${trackRows.length}`,
           `  set pieces        ${setPieceRows.length} (all published)`,

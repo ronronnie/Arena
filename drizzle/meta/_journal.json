@@ -15,6 +15,13 @@
       "when": 1787342663925,
       "tag": "0001_triggers_and_blind_view",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787391096329,
+      "tag": "0002_military_thing",
+      "breakpoints": true
     }
   ]
 }

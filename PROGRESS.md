@@ -2,13 +2,16 @@
 
 ## Current state
 
-**The domain model and the design language both exist.** 20 tables and 1 view live on
-Neon, a data-access layer over them, a seed that produces a judgeable drop, and a
-token-driven component library with a gallery at `/design-system`. There are still **no
-feature screens** — voting, onboarding and the drop UI start at Prompt 3.
+**Data model, design language, and auth all exist.** 20 tables and 1 view live on Neon, a
+data-access layer over them, a seed that produces a judgeable drop, a token-driven
+component library at `/design-system`, and a working sign-in and onboarding flow. A real
+account can now be created, taken through onboarding, and land on `/vote`.
 
-`npm run build`, `npm run check` and `npm run test:e2e` all pass: 146 unit and integration
-tests, 23 Playwright tests (7 visual-regression baselines, mobile only). The build
+The **voting surface itself is still a placeholder** — that is Prompt 5, and the drop
+lifecycle it depends on is Prompt 4.
+
+`npm run build`, `npm run check` and `npm run test:e2e` all pass: 196 unit and integration
+tests, 41 Playwright tests (7 visual-regression baselines, mobile only). The build
 succeeds with **no environment variables set**.
 
 What exists, on top of the Prompt 0 scaffold:
@@ -34,32 +37,42 @@ _Design (Prompt 2)_
 - `/design-system` — every component in every state, addressable by URL:
   `?theme=dark&scale=200&category=metal-vocals`.
 
-Still absent: every feature screen, auth-gated routing, Mux, Inngest, Upstash, and any
+_Auth and onboarding (Prompt 3)_
+
+- `lib/policy/minorPolicy.ts` — THE age gate. Nothing else in the codebase may answer an
+  age question. `isMinor` on the actor is now resolved from the stored date of birth.
+- `/sign-in` — Google, plus email OTP in place of a magic link (not enabled on the
+  instance; see ADR 0006). No role choice anywhere on the screen.
+- `/onboarding` — date of birth, discipline, sub-style, handle and display name, then
+  straight to `/vote`.
+- `proxy.ts` — route protection. Next 16's name for middleware.
+
+Still absent: the voting surface, the drop lifecycle, Mux, Inngest, Upstash, and any
 rating maths (`ratings` rows are seeded, not computed).
 
-**The stack diverges from the prompt pack** in three recorded places: Neon instead of
+**The stack diverges from the prompt pack** in four recorded places: Neon instead of
 Supabase (ADR 0002 — read it before writing a query), two entry tables instead of one
-(ADR 0004), and tokens in TypeScript with generated CSS (ADR 0005).
+(ADR 0004), tokens in TypeScript with generated CSS (ADR 0005), and email OTP instead of a
+magic link (ADR 0006).
 
 ## Next step
 
-Run **Prompt 3 — Auth and audience-first onboarding** from
+Run **Prompt 4 — The weekly drop (set piece lifecycle)** from
 `/docs/arena-prompt-pack-FINAL.md`.
 
-Four things in this repo are waiting specifically for it:
+It is the last thing standing between the current state and the voting screen in Prompt 5.
+Four things in this repo are waiting for it:
 
-- **`isMinor` is hardcoded `true`** in `lib/auth/actor.ts`. Prompt 3 collects a date of
-  birth at onboarding and must replace it. `lib/domain/age.ts` already derives the answer
-  and treats an unknown date of birth as a minor — wire the session to that, and do not
-  add a stored `is_minor` column (ADR 0004 explains why).
-- **`profiles.dob` exists and is nullable.** Onboarding fills it. `profiles.handle` has a
-  unique index but no format validation; handle rules belong to this prompt.
-- **Nothing mounts `auth.middleware()`.** `@neondatabase/auth` provides it; Prompt 0 left
-  it out deliberately because there were no protected routes to guess at. There are now.
-- **Core rule 4 is the whole point.** Everyone signs up as a judge. There is no "I'm a
-  performer" option at signup, and `createSetPieceEntry` already refuses an account
-  without a `competeUnlockedAt`, so the UI must not imply otherwise. `ProgressRing` was
-  built for the unlock counter and is ready to use.
+- **Inngest is not installed.** Prompt 4 owns the scheduled functions that move a drop
+  through its states. `inngest/README.md` records which function belongs to which prompt.
+- **`publishSetPiece` exists and is system-only**, and the licence trigger already refuses
+  to publish a brief whose track licence does not cover the whole drop. The scheduled job
+  calls that function; it does not need to re-check the licence.
+- **`set_pieces.status` has the full lifecycle** — `draft`, `scheduled`, `published`,
+  `closed`, `archived` — but nothing transitions between them yet. The seed writes
+  `published` directly.
+- **`/vote` is a placeholder** and says so on the page. Prompt 5 replaces it; Prompt 4
+  should not build the voting UI, only the lifecycle underneath it.
 
 ## Open questions
 
@@ -82,8 +95,9 @@ Four things in this repo are waiting specifically for it:
    solvable in code: what does winning actually get someone in week one, legally, in the
    launch market? Contest rules, age minimums, tax, skill-vs-chance and GST in India.
    Blocks Phase 4; does not block Prompts 1–15.
-4. **`isMinor` is hardcoded `true`** in `lib/auth/actor.ts`. Deliberate — the safe default
-   until Prompt 3's onboarding collects a date of birth. Prompt 3 must replace it.
+4. ~~**`isMinor` is hardcoded `true`.**~~ **Resolved 2026-08-22.** `currentActor()` now
+   resolves it from `profiles.dob` through `lib/policy/minorPolicy.ts`. All three failure
+   paths — no profile, no date of birth, a thrown lookup — still answer `true`.
 
 5. **`@neondatabase/auth` is `0.5.0-beta`.** A beta dependency on the auth path is a real
    risk. Accepted because it is the official SDK and the server speaks standard Better
@@ -108,6 +122,122 @@ Four things in this repo are waiting specifically for it:
    a `test:integration` script rather than deleting the coverage.
 
 ## Completed
+
+### Prompt 3 — Auth and audience-first onboarding — 2026-08-22
+
+**Files created/changed**
+
+_The age gate_
+
+- `lib/policy/minorPolicy.ts` — **new.** Age bands, the permission set for each, the
+  refusal copy. The only module allowed to answer an age question.
+- `lib/config/hypotheses.ts` — added `MIN_SIGNUP_AGE` and `PHONE_VERIFIED_VOTE_WEIGHT`.
+- `lib/domain/handle.ts` — **new.** Handle rules, normalisation, reserved names.
+- `lib/domain/voteWeight.ts` — **new.** Vote weight and its plain-language explanation.
+
+_Auth_
+
+- `lib/auth/session.ts` — **new.** `getSessionUser()`, `getActor()`, both `cache`-wrapped.
+- `lib/auth/actor.ts` — `isMinor` now resolved from the stored date of birth.
+- `proxy.ts` — **new.** Route protection under Next 16's name for middleware.
+
+_Onboarding_
+
+- `app/(auth)/sign-in/page.tsx` + `sign-in-form.tsx` — **new.**
+- `app/onboarding/page.tsx`, `steps.tsx`, `actions.ts` — **new.** The four-step sequence.
+- `app/vote/page.tsx` — **new.** The destination. A placeholder for Prompt 5.
+
+_Data_
+
+- `lib/db/schema.ts` — `profiles.primary_category_id`, `profiles.onboarding_completed_at`.
+- `drizzle/0002_military_thing.sql` — generated and applied.
+- `lib/db/queries/profiles.ts` — `startOnboarding`, `setPrimaryCategory`,
+  `completeOnboarding`, `getOnboardingState`, `isHandleAvailable`, `setPhoneVerified`.
+  `createProfile` removed — it took a handle and a date of birth with no gate.
+- `lib/db/queries/setPieces.ts` — `resolveDropCategory`.
+- `scripts/seed.ts` — six sub-styles, so onboarding step 3 has something to show.
+
+_Tests_
+
+- `tests/unit/minor-policy.test.ts` — **new.** 19 tests.
+- `tests/unit/handle-and-vote-weight.test.ts` — **new.** 18 tests.
+- `tests/unit/dal-authorization.test.ts` — 12 more refusals.
+- `tests/e2e/auth.spec.ts` — **new.** 9 tests.
+
+**Decisions made**
+
+1. **Email OTP instead of a magic link.** The pack asks for a magic link; the plugin is
+   not enabled on this Neon Auth instance (`/sign-in/magic-link` returns 404). Email OTP
+   is, and it makes the same promise. Google is enabled and returns a real redirect. The
+   instance was probed before any code was written — ADR 0006 has the table.
+
+2. **`lib/policy/minorPolicy.ts` is the only place an age is judged.** The pack's "do not
+   scatter age checks" is the whole design. If you are about to write `age >= 18`, add a
+   field to `MinorPolicy` instead.
+
+3. **`unknown` is not `blocked`.** Between signup and finishing onboarding nobody has a
+   date of birth. That band is protected exactly as a minor but may still hold an account.
+   A test asserts the two policies are identical, so they cannot drift.
+
+4. **Ages are computed in UTC, which rounds DOWN.** A user in Chennai is still 12 to us for
+   the first five and a half hours of their thirteenth birthday. Rounding down delays a
+   birthday by under a day; rounding up admits a twelve-year-old silently.
+
+5. **A future date of birth is `invalid`, not `blocked`** — different states, different
+   messages. "Check that date", not "you are too young", because they are not.
+
+6. **A blocked signup writes nothing.** The gate runs before the insert, so no profile row
+   and no stored date of birth is left for a child we just told we cannot serve.
+
+7. **`setPhoneVerified` takes no phone number.** Arena has no reason to store one. What we
+   keep is the boolean that raises vote weight.
+
+8. **`proxy.ts` only answers "is anyone signed in".** Deciding whether onboarding is
+   finished needs a profile read, and Next's docs say proxy code may be deployed to the CDN
+   and should not depend on shared modules. The onboarding redirect lives in the pages.
+
+9. **Onboarding stores the most specific category**, and `resolveDropCategory` walks up to
+   the discipline for drops and accent ramps.
+
+**A bug found by testing the real flow**
+
+Onboarding stored the sub-style, but seasons and briefs hang off the parent discipline — so
+a judge who picked "Abhinaya" was shown "No brief is open right now" while the seeded week 3
+brief sat there under "Bharatanatyam". Found by driving a real signup against the running
+app, not by any unit test. `resolveDropCategory` fixes it, and it also supplies the slug
+that themes the page: a bharatanatyam judge now gets the gold ramp and a metal vocalist
+violet, from their own profile.
+
+**Deferred / known gaps**
+
+- **Phone verification does not send anything.** The domain rule, the column and the
+  data-access function all exist; the SMS step does not, because the phone plugin is not
+  enabled on the instance. This is the one deliverable of Prompt 3 that is genuinely
+  incomplete rather than substituted.
+- **No e2e coverage of the signed-in flow.** Route protection, the sign-in screen and the
+  absence of any "become a competitor" path are tested; onboarding itself needs a real Neon
+  Auth session, and faking one would mean asserting against a session our code never
+  produces. Verified instead by driving a real signup against the running app.
+- **No sign-out, no settings, no account deletion.** `/settings` is in the proxy matcher
+  and does not exist yet. Deletion matters for Prompt 19.
+- **The date of birth cannot be corrected.** Written once, deliberately. A typo currently
+  needs database access — a support surface, not a settings toggle, but it needs to exist.
+- **No rate limiting on the OTP endpoint.** Upstash arrives with Prompt 14.
+- **`profiles.country` and `city` are never collected.** The columns exist and
+  `minorPolicy` already governs showing a city; nothing writes them.
+
+**How to verify it works**
+
+```bash
+npm run db:migrate && npm run db:seed
+npm run check          # 196 tests
+npm run test:e2e       # 41 tests
+npm run dev            # then open /sign-in
+```
+
+Signed out, `/vote`, `/onboarding` and `/settings` all redirect to `/sign-in?next=…`, while
+`/` and `/design-system` stay open — Core rule 4 is audience-first, and an audience product
+that demands an account before showing anything has the funnel backwards.
 
 ### Prompt 2 — Design language — 2026-08-22
 
